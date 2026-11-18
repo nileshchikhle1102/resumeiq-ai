@@ -1,0 +1,343 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Authenticated user account profile isolated to the owning user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["google.com"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "photoURL", "provider", "createdAt", "updatedAt"]
+    },
+    "ResumeDraftDoc": {
+      "title": "Resume Draft",
+      "description": "Structured user resume draft with template, contact header, experience, skills, projects, education, and certifications.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "templateId": {
+          "type": "string",
+          "enum": ["classic", "modern", "technical"]
+        },
+        "paperSize": {
+          "type": "string",
+          "enum": ["letter", "a4"]
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "personalInfo": {
+          "type": "object",
+          "description": "Contact header map containing fullName, headline, email, phone, location, linkedin, website."
+        },
+        "experiences": {
+          "type": "array",
+          "description": "Bounded list of work experience items (max 30)."
+        },
+        "skillGroups": {
+          "type": "array",
+          "description": "Bounded list of categorized skill groups with proficiency levels (max 20)."
+        },
+        "projects": {
+          "type": "array",
+          "description": "Bounded list of project entries (max 20)."
+        },
+        "education": {
+          "type": "array",
+          "description": "Bounded list of education entries (max 15)."
+        },
+        "certifications": {
+          "type": "array",
+          "description": "Bounded list of certification strings (max 25)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "templateId",
+        "paperSize",
+        "summary",
+        "personalInfo",
+        "experiences",
+        "skillGroups",
+        "projects",
+        "education",
+        "certifications",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "JobTargetDoc": {
+      "title": "Job Target",
+      "description": "Saved target job description for ATS benchmarking.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "company": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "ownerId", "title", "company", "description", "createdAt", "updatedAt"]
+    },
+    "AtsReportDoc": {
+      "title": "ATS Analysis Report",
+      "description": "Cached ATS analysis report linked to a resume draft and optional job target.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "draftId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "jobTargetId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "jobTitleSnapshot": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "analyzedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "overallScore": {
+          "type": "number"
+        },
+        "verdict": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "engineUsed": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "subScores": {
+          "type": "object"
+        },
+        "matchedKeywords": {
+          "type": "array"
+        },
+        "missingKeywords": {
+          "type": "array"
+        },
+        "atsChecks": {
+          "type": "array"
+        },
+        "sectionFeedback": {
+          "type": "array"
+        },
+        "tailoredSummary": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "bulletUpgrades": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "draftId",
+        "jobTargetId",
+        "jobTitleSnapshot",
+        "analyzedAt",
+        "overallScore",
+        "verdict",
+        "engineUsed",
+        "subScores",
+        "matchedKeywords",
+        "missingKeywords",
+        "atsChecks",
+        "sectionFeedback",
+        "tailoredSummary",
+        "bulletUpgrades",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AtsSettingsDoc": {
+      "title": "ATS Settings",
+      "description": "User ATS check engine, failover, strictness, and content upgrade preferences.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "engine": {
+          "type": "string",
+          "enum": ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "local-rules"]
+        },
+        "autoFallback": {
+          "type": "boolean"
+        },
+        "strictness": {
+          "type": "string",
+          "enum": ["balanced", "strict", "startup"]
+        },
+        "maxBulletUpgrades": {
+          "type": "number"
+        },
+        "includeTailoredSummary": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "engine",
+        "autoFallback",
+        "strictness",
+        "maxBulletUpgrades",
+        "includeTailoredSummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Private user account profile containing Gmail identity metadata."
+    },
+    "/users/{userId}/drafts/{draftId}": {
+      "schema": {
+        "$ref": "#/entities/ResumeDraftDoc"
+      },
+      "description": "User-owned resume drafts."
+    },
+    "/users/{userId}/jobs/{jobId}": {
+      "schema": {
+        "$ref": "#/entities/JobTargetDoc"
+      },
+      "description": "User-owned target job descriptions."
+    },
+    "/users/{userId}/reports/{reportId}": {
+      "schema": {
+        "$ref": "#/entities/AtsReportDoc"
+      },
+      "description": "User-owned cached ATS analysis reports."
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/AtsSettingsDoc"
+      },
+      "description": "User-owned ATS configuration settings."
+    }
+  }
+}

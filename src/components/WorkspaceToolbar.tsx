@@ -1,0 +1,291 @@
+import React from 'react';
+import type { User } from 'firebase/auth';
+import {
+  Check,
+  Copy,
+  Download,
+  FilePlus2,
+  Loader2,
+  LogIn,
+  LogOut,
+  Moon,
+  ScanSearch,
+  SlidersHorizontal,
+  Sun,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { AtsAnalysisReport, JobTarget, ResumeDraft } from '../types/resume';
+import { StudioTheme } from '../utils/storage';
+
+interface WorkspaceToolbarProps {
+  drafts: ResumeDraft[];
+  activeDraft: ResumeDraft;
+  jobs: JobTarget[];
+  activeJob: JobTarget | null;
+  cachedReport: AtsAnalysisReport | null;
+  isAnalyzing: boolean;
+  showSaved: boolean;
+  theme: StudioTheme;
+  user: User | null;
+  onToggleTheme: () => void;
+  onSelectDraft: (draftId: string) => void;
+  onSelectJob: (jobId: string | null) => void;
+  onNewBlankDraft: () => void;
+  onDuplicateDraft: () => void;
+  onRequestDeleteDraft: () => void;
+  onExportJson: () => void;
+  onTriggerImportJson: () => void;
+  onRunAnalysis: () => void;
+  onOpenTemplatesSheet: () => void;
+  onOpenSettings: () => void;
+  onSignOut: () => void;
+  onOpenLogin: () => void;
+}
+
+export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
+  drafts,
+  activeDraft,
+  jobs,
+  activeJob,
+  cachedReport,
+  isAnalyzing,
+  showSaved,
+  theme,
+  user,
+  onToggleTheme,
+  onSelectDraft,
+  onSelectJob,
+  onNewBlankDraft,
+  onDuplicateDraft,
+  onRequestDeleteDraft,
+  onExportJson,
+  onTriggerImportJson,
+  onRunAnalysis,
+  onOpenTemplatesSheet,
+  onOpenSettings,
+  onSignOut,
+  onOpenLogin,
+}) => {
+  const isDark = theme === 'dark';
+
+  return (
+    <div className="no-print bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
+      <div className="max-w-[1440px] mx-auto px-4 lg:px-6 py-2.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
+        {/* Left: Active Draft + Draft Quick Actions */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <label
+            htmlFor="draft-selector"
+            className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap"
+          >
+            Draft
+          </label>
+          <select
+            id="draft-selector"
+            value={activeDraft.id}
+            onChange={(e) => onSelectDraft(e.target.value)}
+            className="min-h-[38px] max-w-[200px] sm:max-w-[250px] truncate rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            {drafts.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name || 'Untitled Resume'}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onNewBlankDraft}
+              title="Create blank resume draft"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <FilePlus2 className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">New</span>
+            </button>
+            <button
+              type="button"
+              onClick={onDuplicateDraft}
+              title="Duplicate current draft"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Duplicate</span>
+            </button>
+            <button
+              type="button"
+              onClick={onRequestDeleteDraft}
+              title="Delete current draft"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+            <button
+              type="button"
+              onClick={onExportJson}
+              title="Export JSON backup"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden md:inline">Export JSON</span>
+            </button>
+            <button
+              type="button"
+              onClick={onTriggerImportJson}
+              title="Import JSON backup"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden md:inline">Import</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenTemplatesSheet}
+              className="lg:hidden inline-flex items-center min-h-[38px] px-2.5 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg transition-colors whitespace-nowrap"
+            >
+              Templates
+            </button>
+          </div>
+
+          <span
+            aria-live="polite"
+            className={`inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap select-none transition-opacity duration-200 ${
+              showSaved ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+            <span>Saved</span>
+          </span>
+        </div>
+
+        {/* Right: Target Job Selector + Theme Toggle + Cached Score + Primary ATS Scan Trigger */}
+        <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <label
+              htmlFor="job-selector"
+              className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap"
+            >
+              Target Job
+            </label>
+            <select
+              id="job-selector"
+              value={activeJob?.id ?? ''}
+              onChange={(e) => onSelectJob(e.target.value || null)}
+              className="min-h-[38px] max-w-[180px] sm:max-w-[250px] truncate rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            >
+              <option value="">General ATS Audit (No JD)</option>
+              {jobs.map((job) => (
+                <option key={job.id} value={job.id}>
+                  {job.title} · {job.company}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {cachedReport && (
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap tabular-nums">
+              <span>Score</span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                {cachedReport.overallScore}/100
+              </span>
+            </div>
+          )}
+
+          {/* ATS Check Configuration */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="Open ATS Check Configuration"
+            title="ATS Check Configuration"
+            className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+
+          {/* Daylight Studio / Dark Studio Theme Toggle */}
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={isDark ? 'Switch to Daylight Studio theme' : 'Switch to Dark Studio theme'}
+            title={isDark ? 'Switch to Daylight Studio' : 'Switch to Dark Studio'}
+            className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          >
+            {isDark ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                <span className="hidden md:inline">Daylight</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
+                <span className="hidden md:inline">Dark Studio</span>
+              </>
+            )}
+          </button>
+
+          {/* Gmail Account Status / Sign In or Sign Out */}
+          {user ? (
+            <div className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shrink-0">
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || user.email || 'Account avatar'}
+                  referrerPolicy="no-referrer"
+                  className="w-6 h-6 rounded-md object-cover shrink-0"
+                />
+              ) : (
+                <span className="w-6 h-6 rounded-md bg-blue-700 text-white text-xs font-semibold flex items-center justify-center shrink-0">
+                  {(user.email || 'G')[0].toUpperCase()}
+                </span>
+              )}
+              <span className="hidden xl:inline max-w-[130px] truncate text-xs font-medium text-slate-700 dark:text-slate-200">
+                {user.email || user.displayName}
+              </span>
+              <button
+                type="button"
+                onClick={onSignOut}
+                title={`Sign out (${user.email || 'Gmail'})`}
+                aria-label="Sign out"
+                className="inline-flex items-center gap-1 min-h-[28px] px-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 rounded-md transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              title="Sign in with Gmail to sync workspace"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Sign in</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onRunAnalysis}
+            disabled={isAnalyzing}
+            className="inline-flex items-center justify-center gap-2 min-h-[38px] px-4 py-1.5 text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 disabled:bg-blue-400 dark:disabled:bg-blue-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-900"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <ScanSearch className="w-4 h-4" aria-hidden="true" />
+                <span>Run ATS Scan</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

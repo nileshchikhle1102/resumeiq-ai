@@ -1,0 +1,8 @@
+{
+  "name": "ATS Resume Studio",
+  "description": "Web and mobile resume builder with deep AI ATS checking, job description matching, scoring dashboard, and print-ready PDF export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

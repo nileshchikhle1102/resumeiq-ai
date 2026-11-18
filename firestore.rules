@@ -1,0 +1,311 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Shared hardened primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function parentUserExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // Validation Blueprint: UserProfile
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'photoURL', 'provider', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'provider', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() <= 120
+        && data.photoURL is string && data.photoURL.size() <= 500
+        && data.provider == 'google.com'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: ResumeDraftDoc
+    function isValidResumeDraft(data, userId, draftId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'name', 'templateId', 'paperSize', 'summary',
+          'personalInfo', 'experiences', 'skillGroups', 'projects',
+          'education', 'certifications', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'name', 'templateId', 'paperSize', 'summary',
+          'personalInfo', 'experiences', 'skillGroups', 'projects',
+          'education', 'certifications', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == draftId
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.name is string && data.name.size() <= 160
+        && data.templateId in ['classic', 'modern', 'technical']
+        && data.paperSize in ['letter', 'a4']
+        && data.summary is string && data.summary.size() <= 4000
+        && data.personalInfo is map
+        && data.personalInfo.keys().hasAll(['fullName', 'headline', 'email', 'phone', 'location', 'linkedin', 'website'])
+        && data.personalInfo.keys().hasOnly(['fullName', 'headline', 'email', 'phone', 'location', 'linkedin', 'website'])
+        && data.personalInfo.fullName is string && data.personalInfo.fullName.size() <= 140
+        && data.personalInfo.headline is string && data.personalInfo.headline.size() <= 220
+        && data.personalInfo.email is string && data.personalInfo.email.size() <= 254
+        && data.personalInfo.phone is string && data.personalInfo.phone.size() <= 64
+        && data.personalInfo.location is string && data.personalInfo.location.size() <= 140
+        && data.personalInfo.linkedin is string && data.personalInfo.linkedin.size() <= 260
+        && data.personalInfo.website is string && data.personalInfo.website.size() <= 260
+        && data.experiences is list && data.experiences.size() <= 30
+        && (data.experiences.size() == 0 || data.experiences[0] is map)
+        && data.skillGroups is list && data.skillGroups.size() <= 20
+        && (data.skillGroups.size() == 0 || data.skillGroups[0] is map)
+        && data.projects is list && data.projects.size() <= 20
+        && (data.projects.size() == 0 || data.projects[0] is map)
+        && data.education is list && data.education.size() <= 15
+        && (data.education.size() == 0 || data.education[0] is map)
+        && data.certifications is list && data.certifications.size() <= 25
+        && (data.certifications.size() == 0 || data.certifications[0] is string)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: JobTargetDoc
+    function isValidJobTarget(data, userId, jobId) {
+      return data.keys().hasAll(['id', 'ownerId', 'title', 'company', 'description', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'title', 'company', 'description', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == jobId
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() <= 160
+        && data.company is string && data.company.size() <= 160
+        && data.description is string && data.description.size() <= 20000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: AtsReportDoc
+    function isValidAtsReport(data, userId, reportId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'draftId', 'jobTargetId', 'jobTitleSnapshot', 'analyzedAt',
+          'overallScore', 'verdict', 'engineUsed', 'subScores', 'matchedKeywords',
+          'missingKeywords', 'atsChecks', 'sectionFeedback', 'tailoredSummary',
+          'bulletUpgrades', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'draftId', 'jobTargetId', 'jobTitleSnapshot', 'analyzedAt',
+          'overallScore', 'verdict', 'engineUsed', 'subScores', 'matchedKeywords',
+          'missingKeywords', 'atsChecks', 'sectionFeedback', 'tailoredSummary',
+          'bulletUpgrades', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == reportId
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && isValidId(data.draftId)
+        && data.jobTargetId is string && data.jobTargetId.size() <= 128
+        && data.jobTitleSnapshot is string && data.jobTitleSnapshot.size() <= 200
+        && data.analyzedAt is string && data.analyzedAt.size() <= 64
+        && data.overallScore is number && data.overallScore >= 0 && data.overallScore <= 100
+        && data.verdict is string && data.verdict.size() <= 600
+        && data.engineUsed is string && data.engineUsed.size() <= 120
+        && data.subScores is map
+        && data.subScores.keys().hasAll([
+          'keywordMatch', 'roleAlignment', 'impactMetrics',
+          'formattingParseability', 'sectionCompleteness'
+        ])
+        && data.subScores.keys().hasOnly([
+          'keywordMatch', 'roleAlignment', 'impactMetrics',
+          'formattingParseability', 'sectionCompleteness'
+        ])
+        && data.matchedKeywords is list && data.matchedKeywords.size() <= 150
+        && (data.matchedKeywords.size() == 0 || data.matchedKeywords[0] is string)
+        && data.missingKeywords is list && data.missingKeywords.size() <= 150
+        && (data.missingKeywords.size() == 0 || data.missingKeywords[0] is map)
+        && data.atsChecks is list && data.atsChecks.size() <= 30
+        && (data.atsChecks.size() == 0 || data.atsChecks[0] is map)
+        && data.sectionFeedback is list && data.sectionFeedback.size() <= 20
+        && (data.sectionFeedback.size() == 0 || data.sectionFeedback[0] is map)
+        && data.tailoredSummary is string && data.tailoredSummary.size() <= 4000
+        && data.bulletUpgrades is list && data.bulletUpgrades.size() <= 20
+        && (data.bulletUpgrades.size() == 0 || data.bulletUpgrades[0] is map)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: AtsSettingsDoc
+    function isValidAtsSettings(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'engine', 'autoFallback', 'strictness',
+          'maxBulletUpgrades', 'includeTailoredSummary', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'engine', 'autoFallback', 'strictness',
+          'maxBulletUpgrades', 'includeTailoredSummary', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.engine in ['gemini-4-hydrogen', 'gemini-3.1-flash-lite', 'local-rules']
+        && data.autoFallback is bool
+        && data.strictness in ['balanced', 'strict', 'startup']
+        && data.maxBulletUpgrades in [2, 4, 6]
+        && data.includeTailoredSummary is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Private User Profile (PII isolated to owner)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'photoURL', 'updatedAt']);
+      allow delete: if false;
+
+      // User Resume Drafts
+      match /drafts/{draftId} {
+        allow get: if isValidId(userId) && isValidId(draftId) && isOwner(userId) && parentUserExists(userId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(draftId)
+          && isOwner(userId)
+          && isValidResumeDraft(incoming(), userId, draftId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && parentUserExists(userId);
+        allow update: if isValidId(userId)
+          && isValidId(draftId)
+          && isOwner(userId)
+          && isValidResumeDraft(incoming(), userId, draftId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'templateId', 'paperSize', 'summary', 'personalInfo',
+            'experiences', 'skillGroups', 'projects', 'education', 'certifications', 'updatedAt'
+          ])
+          && parentUserExists(userId);
+        allow delete: if isValidId(userId) && isValidId(draftId) && isOwner(userId) && parentUserExists(userId);
+      }
+
+      // User Job Targets
+      match /jobs/{jobId} {
+        allow get: if isValidId(userId) && isValidId(jobId) && isOwner(userId) && parentUserExists(userId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(jobId)
+          && isOwner(userId)
+          && isValidJobTarget(incoming(), userId, jobId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && parentUserExists(userId);
+        allow update: if isValidId(userId)
+          && isValidId(jobId)
+          && isOwner(userId)
+          && isValidJobTarget(incoming(), userId, jobId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'company', 'description', 'updatedAt'])
+          && parentUserExists(userId);
+        allow delete: if isValidId(userId) && isValidId(jobId) && isOwner(userId) && parentUserExists(userId);
+      }
+
+      // User ATS Reports
+      match /reports/{reportId} {
+        allow get: if isValidId(userId) && isValidId(reportId) && isOwner(userId) && parentUserExists(userId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(reportId)
+          && isOwner(userId)
+          && isValidAtsReport(incoming(), userId, reportId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && parentUserExists(userId);
+        allow update: if isValidId(userId)
+          && isValidId(reportId)
+          && isOwner(userId)
+          && isValidAtsReport(incoming(), userId, reportId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().draftId == existing().draftId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'jobTargetId', 'jobTitleSnapshot', 'analyzedAt', 'overallScore',
+            'verdict', 'engineUsed', 'subScores', 'matchedKeywords', 'missingKeywords',
+            'atsChecks', 'sectionFeedback', 'tailoredSummary', 'bulletUpgrades', 'updatedAt'
+          ])
+          && parentUserExists(userId);
+        allow delete: if isValidId(userId) && isValidId(reportId) && isOwner(userId) && parentUserExists(userId);
+      }
+
+      // User ATS Settings
+      match /settings/{settingId} {
+        allow get: if isValidId(userId) && settingId == 'ats' && isOwner(userId) && parentUserExists(userId);
+        allow list: if false;
+        allow create: if isValidId(userId)
+          && settingId == 'ats'
+          && isOwner(userId)
+          && isValidAtsSettings(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && parentUserExists(userId);
+        allow update: if isValidId(userId)
+          && settingId == 'ats'
+          && isOwner(userId)
+          && isValidAtsSettings(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'engine', 'autoFallback', 'strictness',
+            'maxBulletUpgrades', 'includeTailoredSummary', 'updatedAt'
+          ])
+          && parentUserExists(userId);
+        allow delete: if false;
+      }
+    }
+  }
+}
