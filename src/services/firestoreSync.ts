@@ -17,6 +17,8 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import {
   AtsAnalysisReport,
   AtsSettings,
+  BillingPlanId,
+  BillingSubscription,
   JobTarget,
   ResumeDraft,
   SkillProficiency,
@@ -422,11 +424,57 @@ export async function syncAtsSettingsToFirestore(
   }
 }
 
+export async function saveBillingSubscriptionToFirestore(
+  uid: string,
+  subscription: {
+    plan: BillingPlanId;
+    stripeSessionId: string;
+    receiptToken: string;
+    expiresAt: string;
+  }
+): Promise<void> {
+  const path = `users/${uid}/billing/subscription`;
+  const ref = doc(db, 'users', uid, 'billing', 'subscription');
+  const plan: BillingPlanId = subscription.plan === 'annual' ? 'annual' : 'monthly';
+  const stripeSessionId = truncate(subscription.stripeSessionId, 255);
+  const receiptToken = truncate(subscription.receiptToken, 256);
+  const expiresAt = truncate(subscription.expiresAt, 64);
+
+  try {
+    const existing = await getDoc(ref);
+    if (!existing.exists()) {
+      await setDoc(ref, {
+        ownerId: uid,
+        plan,
+        status: 'active',
+        stripeSessionId,
+        receiptToken,
+        expiresAt,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      await updateDoc(ref, {
+        plan,
+        status: 'active',
+        stripeSessionId,
+        receiptToken,
+        expiresAt,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
 export interface WorkspaceSubscriptionsCallbacks {
   onDrafts: (drafts: ResumeDraft[]) => void;
   onJobs: (jobs: JobTarget[]) => void;
   onReports: (reports: Record<string, AtsAnalysisReport>) => void;
   onSettings: (settings: AtsSettings | null) => void;
+  onProfileTimestamp?: (createdAtIso: string) => void;
+  onBilling?: (subscription: BillingSubscription | null) => void;
 }
 
 export function subscribeUserWorkspace(
@@ -437,6 +485,46 @@ export function subscribeUserWorkspace(
   const jobsPath = `users/${uid}/jobs`;
   const reportsPath = `users/${uid}/reports`;
   const settingsPath = `users/${uid}/settings/ats`;
+  const profilePath = `users/${uid}`;
+  const billingPath = `users/${uid}/billing/subscription`;
+
+  const unsubProfile = onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data?.createdAt instanceof Timestamp) {
+        callbacks.onProfileTimestamp?.(data.createdAt.toDate().toISOString());
+      } else if (typeof data?.createdAt === 'string' && data.createdAt) {
+        callbacks.onProfileTimestamp?.(data.createdAt);
+      }
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.GET, profilePath);
+    }
+  );
+
+  const unsubBilling = onSnapshot(
+    doc(db, 'users', uid, 'billing', 'subscription'),
+    (snap) => {
+      if (!snap.exists()) {
+        callbacks.onBilling?.(null);
+        return;
+      }
+      const data = snap.data();
+      callbacks.onBilling?.({
+        ownerId: String(data.ownerId || uid),
+        plan: data.plan === 'annual' ? 'annual' : 'monthly',
+        status: 'active',
+        stripeSessionId: String(data.stripeSessionId || ''),
+        receiptToken: String(data.receiptToken || ''),
+        expiresAt: String(data.expiresAt || ''),
+      });
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.GET, billingPath);
+    }
+  );
 
   const unsubDrafts = onSnapshot(
     query(collection(db, 'users', uid, 'drafts'), where('ownerId', '==', uid)),
@@ -557,6 +645,8 @@ export function subscribeUserWorkspace(
   );
 
   return () => {
+    unsubProfile();
+    unsubBilling();
     unsubDrafts();
     unsubJobs();
     unsubReports();

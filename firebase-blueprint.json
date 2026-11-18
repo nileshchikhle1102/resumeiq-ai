@@ -306,6 +306,59 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "BillingSubscriptionDoc": {
+      "title": "Billing Subscription",
+      "description": "Verified Stripe subscription entitlement for a user account.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["monthly", "annual"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active"]
+        },
+        "stripeSessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "receiptToken": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 256
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "plan",
+        "status",
+        "stripeSessionId",
+        "receiptToken",
+        "expiresAt",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -338,6 +391,12 @@
         "$ref": "#/entities/AtsSettingsDoc"
       },
       "description": "User-owned ATS configuration settings."
+    },
+    "/users/{userId}/billing/{billingId}": {
+      "schema": {
+        "$ref": "#/entities/BillingSubscriptionDoc"
+      },
+      "description": "User-owned verified billing subscription state."
     }
   }
 }

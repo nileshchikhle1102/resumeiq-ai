@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import {
   Check,
   Copy,
+  CreditCard,
   Download,
   FilePlus2,
   Loader2,
@@ -15,7 +16,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { AtsAnalysisReport, JobTarget, ResumeDraft } from '../types/resume';
+import { AtsAnalysisReport, JobTarget, ResumeDraft, TrialStatusInfo } from '../types/resume';
 import { StudioTheme } from '../utils/storage';
 
 interface WorkspaceToolbarProps {
@@ -28,6 +29,7 @@ interface WorkspaceToolbarProps {
   showSaved: boolean;
   theme: StudioTheme;
   user: User | null;
+  trialStatus: TrialStatusInfo;
   onToggleTheme: () => void;
   onSelectDraft: (draftId: string) => void;
   onSelectJob: (jobId: string | null) => void;
@@ -39,6 +41,7 @@ interface WorkspaceToolbarProps {
   onRunAnalysis: () => void;
   onOpenTemplatesSheet: () => void;
   onOpenSettings: () => void;
+  onOpenBilling: () => void;
   onSignOut: () => void;
   onOpenLogin: () => void;
 }
@@ -53,6 +56,7 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
   showSaved,
   theme,
   user,
+  trialStatus,
   onToggleTheme,
   onSelectDraft,
   onSelectJob,
@@ -64,10 +68,25 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
   onRunAnalysis,
   onOpenTemplatesSheet,
   onOpenSettings,
+  onOpenBilling,
   onSignOut,
   onOpenLogin,
 }) => {
   const isDark = theme === 'dark';
+
+  const billingLabel = !user
+    ? '3-Day Trial'
+    : trialStatus.hasPaidSubscription
+    ? 'Pro'
+    : trialStatus.isTrialActive
+    ? `Trial · ${
+        trialStatus.daysRemaining > 0
+          ? `${trialStatus.daysRemaining}d left`
+          : `${Math.max(1, trialStatus.hoursRemaining)}h left`
+      }`
+    : 'Trial Ended';
+
+  const isExpired = Boolean(user && !trialStatus.hasActiveAccess);
 
   return (
     <div className="no-print bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
@@ -191,6 +210,22 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
               </span>
             </div>
           )}
+
+          {/* Trial & Pro Billing */}
+          <button
+            type="button"
+            onClick={onOpenBilling}
+            aria-label="Open Trial and Pro Billing"
+            title="View 3-Day Free Trial & Pro Plan"
+            className={`inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 tabular-nums ${
+              isExpired
+                ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
+                : 'text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>{billingLabel}</span>
+          </button>
 
           {/* ATS Check Configuration */}
           <button

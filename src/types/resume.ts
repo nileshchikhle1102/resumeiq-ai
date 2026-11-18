@@ -174,3 +174,27 @@ export interface AtsSettings {
   includeTailoredSummary: boolean;
 }
 
+export type BillingPlanId = 'monthly' | 'annual';
+
+export interface BillingSubscription {
+  ownerId: string;
+  plan: BillingPlanId;
+  status: 'active';
+  stripeSessionId: string;
+  receiptToken: string;
+  expiresAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TrialStatusInfo {
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  isTrialActive: boolean;
+  msRemaining: number;
+  daysRemaining: number;
+  hoursRemaining: number;
+  hasPaidSubscription: boolean;
+  hasActiveAccess: boolean;
+}
+

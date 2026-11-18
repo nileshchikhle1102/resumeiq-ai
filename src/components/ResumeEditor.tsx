@@ -24,7 +24,9 @@ interface ResumeEditorProps {
   activeJob: JobTarget | null;
   atsSettings?: AtsSettings;
   isAuthenticated?: boolean;
+  hasActiveAccess?: boolean;
   onRequireAuth?: (reason: string) => void;
+  onRequireBilling?: (reason: string) => void;
   onOpenSettings?: () => void;
   onChangeDraft: (updater: (prev: ResumeDraft) => ResumeDraft) => void;
   onNotify: (message: string) => void;
@@ -57,7 +59,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
   activeJob,
   atsSettings,
   isAuthenticated = true,
+  hasActiveAccess = true,
   onRequireAuth,
+  onRequireBilling,
   onOpenSettings,
   onChangeDraft,
   onNotify,
@@ -95,6 +99,10 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
   ) => {
     if (!isAuthenticated && onRequireAuth) {
       onRequireAuth('Sign in with your Gmail account to optimize resume bullets with AI.');
+      return;
+    }
+    if (!hasActiveAccess && onRequireBilling) {
+      onRequireBilling('Your 3-day free trial has ended. Subscribe to ResumeIQ Pro to continue optimizing bullets with AI.');
       return;
     }
     const key = `${expId}:${bulletIdx}`;
@@ -139,6 +147,10 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
   const handleGenerateSummary = async () => {
     if (!isAuthenticated && onRequireAuth) {
       onRequireAuth('Sign in with your Gmail account to tailor your summary with AI.');
+      return;
+    }
+    if (!hasActiveAccess && onRequireBilling) {
+      onRequireBilling('Your 3-day free trial has ended. Subscribe to ResumeIQ Pro to continue tailoring summaries with AI.');
       return;
     }
     if (atsSettings?.engine === 'local-rules') {

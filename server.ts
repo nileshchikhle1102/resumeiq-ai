@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'crypto';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -15,6 +16,59 @@ const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 function isGeminiConfigured(): boolean {
   const apiKey = process.env.GEMINI_API_KEY;
   return Boolean(apiKey && apiKey !== 'MY_GEMINI_API_KEY');
+}
+
+function getStripeSecretKey(): string | null {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key || key === 'MY_STRIPE_SECRET_KEY') {
+    return null;
+  }
+  return key;
+}
+
+function isStripeConfigured(): boolean {
+  return Boolean(getStripeSecretKey());
+}
+
+function signBillingReceipt(payload: {
+  uid: string;
+  plan: string;
+  sessionId: string;
+  expiresAt: string;
+}): string {
+  const secret =
+    process.env.STRIPE_SECRET_KEY ||
+    process.env.GEMINI_API_KEY ||
+    'resumeiq-billing-receipt-secret';
+  const message = `${payload.uid}|${payload.plan}|${payload.sessionId}|${payload.expiresAt}`;
+  return crypto.createHmac('sha256', secret).update(message).digest('hex');
+}
+
+function resolveAppOrigin(req: express.Request, clientReturnUrl?: string): string {
+  if (clientReturnUrl) {
+    try {
+      const parsed = new URL(clientReturnUrl);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return `${parsed.origin}${parsed.pathname}`.replace(/\/$/, '');
+      }
+    } catch {
+      // Fallback to server env / request host
+    }
+  }
+  const envUrl = process.env.APP_URL?.trim();
+  if (envUrl && envUrl !== 'MY_APP_URL') {
+    try {
+      return new URL(envUrl).origin;
+    } catch {
+      // Ignore malformed APP_URL
+    }
+  }
+  const protoHeader = req.headers['x-forwarded-proto'];
+  const proto = Array.isArray(protoHeader)
+    ? protoHeader[0]
+    : protoHeader?.split(',')[0] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host') || `localhost:${PORT}`;
+  return `${proto}://${host}`;
 }
 
 function getAiClient(): GoogleGenAI {
@@ -287,6 +341,225 @@ async function createServer() {
         { id: FALLBACK_MODEL, label: 'Gemini 3.1 Flash Lite' },
       ],
     });
+  });
+
+  app.get('/api/billing/status', (_req, res) => {
+    res.json({
+      ok: true,
+      stripeConfigured: isStripeConfigured(),
+      trialDays: 3,
+      plans: [
+        {
+          id: 'monthly',
+          name: 'Monthly Pro',
+          priceCents: 1200,
+          interval: 'month',
+          priceIdConfigured: Boolean(process.env.STRIPE_PRICE_MONTHLY?.trim()),
+        },
+        {
+          id: 'annual',
+          name: 'Annual Pro',
+          priceCents: 8900,
+          interval: 'year',
+          priceIdConfigured: Boolean(process.env.STRIPE_PRICE_ANNUAL?.trim()),
+        },
+      ],
+    });
+  });
+
+  app.post('/api/billing/create-checkout-session', async (req, res) => {
+    try {
+      const { plan, uid, email, returnUrl } = req.body as {
+        plan?: string;
+        uid?: string;
+        email?: string;
+        returnUrl?: string;
+      };
+
+      if (plan !== 'monthly' && plan !== 'annual') {
+        res.status(400).json({ error: 'Plan must be "monthly" or "annual".' });
+        return;
+      }
+
+      if (!uid || !uid.trim()) {
+        res.status(400).json({ error: 'Authenticated user ID is required to start checkout.' });
+        return;
+      }
+
+      const stripeKey = getStripeSecretKey();
+      if (!stripeKey) {
+        res.status(503).json({
+          stripeConfigured: false,
+          error:
+            'Stripe payment gateway is not configured yet. Add STRIPE_SECRET_KEY in Settings > Secrets (or .env) to accept live Card, Apple Pay, and Google Pay subscriptions.',
+        });
+        return;
+      }
+
+      const baseOrigin = resolveAppOrigin(req, returnUrl);
+      const cleanReturnBase = baseOrigin.split('?')[0].replace(/\/$/, '');
+      const successUrl = `${cleanReturnBase}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${cleanReturnBase}/?checkout=cancelled`;
+
+      const configuredPriceId =
+        plan === 'annual'
+          ? process.env.STRIPE_PRICE_ANNUAL?.trim()
+          : process.env.STRIPE_PRICE_MONTHLY?.trim();
+
+      const params = new URLSearchParams();
+      params.set('mode', 'subscription');
+      params.set('success_url', successUrl);
+      params.set('cancel_url', cancelUrl);
+      params.set('client_reference_id', uid.trim());
+      params.set('metadata[uid]', uid.trim());
+      params.set('metadata[plan]', plan);
+      params.set('allow_promotion_codes', 'true');
+      if (email && email.includes('@')) {
+        params.set('customer_email', email.trim());
+      }
+
+      if (configuredPriceId) {
+        params.set('line_items[0][price]', configuredPriceId);
+        params.set('line_items[0][quantity]', '1');
+      } else {
+        params.set('line_items[0][price_data][currency]', 'usd');
+        params.set(
+          'line_items[0][price_data][product_data][name]',
+          plan === 'annual' ? 'ResumeIQ Pro — Annual Plan' : 'ResumeIQ Pro — Monthly Plan'
+        );
+        params.set(
+          'line_items[0][price_data][product_data][description]',
+          'Unlimited Gemini ATS compatibility scans, AI bullet & summary rewrites, and print-ready PDF/JSON exports.'
+        );
+        params.set(
+          'line_items[0][price_data][unit_amount]',
+          plan === 'annual' ? '8900' : '1200'
+        );
+        params.set(
+          'line_items[0][price_data][recurring][interval]',
+          plan === 'annual' ? 'year' : 'month'
+        );
+        params.set('line_items[0][quantity]', '1');
+      }
+
+      const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${stripeKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      const stripeData = (await stripeRes.json()) as {
+        id?: string;
+        url?: string;
+        error?: { message?: string };
+      };
+
+      if (!stripeRes.ok || !stripeData.url) {
+        res.status(stripeRes.status >= 400 ? stripeRes.status : 500).json({
+          error: stripeData?.error?.message || 'Unable to create Stripe Checkout session.',
+        });
+        return;
+      }
+
+      res.json({
+        ok: true,
+        sessionId: stripeData.id,
+        url: stripeData.url,
+      });
+    } catch (err) {
+      res.status(500).json({
+        error: err instanceof Error ? err.message : 'Failed to initialize Stripe Checkout.',
+      });
+    }
+  });
+
+  app.post('/api/billing/verify-session', async (req, res) => {
+    try {
+      const { sessionId, uid } = req.body as { sessionId?: string; uid?: string };
+      if (!sessionId || !uid) {
+        res.status(400).json({ error: 'sessionId and uid are required.' });
+        return;
+      }
+
+      const stripeKey = getStripeSecretKey();
+      if (!stripeKey) {
+        res.status(503).json({
+          stripeConfigured: false,
+          error: 'STRIPE_SECRET_KEY is not configured on the server.',
+        });
+        return;
+      }
+
+      const stripeRes = await fetch(
+        `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId.trim())}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${stripeKey}`,
+          },
+        }
+      );
+
+      const session = (await stripeRes.json()) as {
+        id?: string;
+        status?: string;
+        payment_status?: string;
+        client_reference_id?: string | null;
+        metadata?: { uid?: string; plan?: string };
+        error?: { message?: string };
+      };
+
+      if (!stripeRes.ok || !session.id) {
+        res.status(stripeRes.status >= 400 ? stripeRes.status : 400).json({
+          error: session?.error?.message || 'Could not verify Stripe Checkout session.',
+        });
+        return;
+      }
+
+      const sessionOwner = session.client_reference_id || session.metadata?.uid;
+      if (sessionOwner && sessionOwner !== uid) {
+        res.status(403).json({ error: 'This checkout session belongs to a different user.' });
+        return;
+      }
+
+      const isPaid =
+        session.payment_status === 'paid' ||
+        session.payment_status === 'no_payment_required' ||
+        session.status === 'complete';
+
+      if (!isPaid) {
+        res.status(402).json({ error: 'Payment has not completed for this checkout session.' });
+        return;
+      }
+
+      const plan = session.metadata?.plan === 'annual' ? 'annual' : 'monthly';
+      const durationDays = plan === 'annual' ? 366 : 32;
+      const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+      const receiptToken = signBillingReceipt({
+        uid,
+        plan,
+        sessionId: session.id,
+        expiresAt,
+      });
+
+      res.json({
+        ok: true,
+        subscription: {
+          plan,
+          status: 'active',
+          stripeSessionId: session.id,
+          receiptToken,
+          expiresAt,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        error: err instanceof Error ? err.message : 'Failed to verify Stripe payment.',
+      });
+    }
   });
 
   app.post('/api/ats/analyze', async (req, res) => {

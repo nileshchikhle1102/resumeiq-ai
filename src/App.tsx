@@ -3,6 +3,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { CheckCircle2, Loader2, Printer, Trash2, X } from 'lucide-react';
 import { AtsDashboard } from './components/AtsDashboard';
 import { AuthPromptModal } from './components/AuthPromptModal';
+import { BillingModal } from './components/BillingModal';
 import { JobTargetsView } from './components/JobTargetsView';
 import { LoginPage } from './components/LoginPage';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -18,6 +19,7 @@ import {
   deleteDraftFromFirestore,
   deleteJobFromFirestore,
   ensureUserProfile,
+  saveBillingSubscriptionToFirestore,
   seedInitialWorkspaceIfEmpty,
   subscribeUserWorkspace,
   syncAtsSettingsToFirestore,
@@ -28,10 +30,12 @@ import {
 import {
   AtsAnalysisReport,
   AtsSettings,
+  BillingSubscription,
   JobTarget,
   MobileTab,
   ResumeDraft,
   TemplateId,
+  TrialStatusInfo,
   WorkspaceTab,
 } from './types/resume';
 import { runLocalDeterministicAtsCheck } from './utils/localAtsEngine';
@@ -54,11 +58,16 @@ import {
   StudioTheme,
 } from './utils/storage';
 
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 export default function App() {
   const [theme, setTheme] = useState<StudioTheme>(() => loadTheme());
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [localGuestMode, setLocalGuestMode] = useState(false);
+  const [profileCreatedAt, setProfileCreatedAt] = useState<string | null>(null);
+  const [billingSubscription, setBillingSubscription] = useState<BillingSubscription | null>(null);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
   const [drafts, setDrafts] = useState<ResumeDraft[]>(() => loadDrafts());
   const [jobs, setJobs] = useState<JobTarget[]>(() => loadJobs());
@@ -73,6 +82,12 @@ export default function App() {
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('builder');
   const [mobileTemplatesSheetOpen, setMobileTemplatesSheetOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [billingModal, setBillingModal] = useState<{ open: boolean; reason: string | null }>({
+    open: false,
+    reason: null,
+  });
+  const [pendingCheckoutSessionId, setPendingCheckoutSessionId] = useState<string | null>(null);
+  const [verifyingCheckout, setVerifyingCheckout] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<{
     open: boolean;
     reason: string;
@@ -93,6 +108,8 @@ export default function App() {
   const draftsRef = useRef<ResumeDraft[]>(drafts);
   const jobsRef = useRef<JobTarget[]>(jobs);
   const atsSettingsRef = useRef<AtsSettings>(atsSettings);
+  const profileCreatedAtRef = useRef<string | null>(profileCreatedAt);
+  const billingSubscriptionRef = useRef<BillingSubscription | null>(billingSubscription);
 
   const activeDraft = drafts.find((d) => d.id === activeDraftId) ?? drafts[0];
   const activeJob = activeJobId ? jobs.find((j) => j.id === activeJobId) ?? null : null;
@@ -100,9 +117,60 @@ export default function App() {
   const reportCacheKey = getReportCacheKey(activeDraft.id, activeJob?.id ?? null);
   const cachedReport = reports[reportCacheKey] ?? null;
 
+  const computeTrialStatus = (
+    user: User | null,
+    createdIso: string | null,
+    sub: BillingSubscription | null,
+    timestampMs: number
+  ): TrialStatusInfo => {
+    const hasPaidSubscription = Boolean(
+      user &&
+        sub &&
+        sub.status === 'active' &&
+        new Date(sub.expiresAt).getTime() > timestampMs
+    );
+    const effectiveTrialStart = user
+      ? createdIso || user.metadata?.creationTime || new Date(timestampMs).toISOString()
+      : null;
+    const trialStartMs = effectiveTrialStart ? new Date(effectiveTrialStart).getTime() : 0;
+    const trialEndMs =
+      effectiveTrialStart && !Number.isNaN(trialStartMs) ? trialStartMs + THREE_DAYS_MS : 0;
+    const msRemaining = user ? Math.max(0, trialEndMs - timestampMs) : 0;
+    const isTrialActive = Boolean(user && msRemaining > 0);
+    const daysRemaining = Math.floor(msRemaining / (24 * 60 * 60 * 1000));
+    const hoursRemaining = Math.ceil(msRemaining / (60 * 60 * 1000));
+    const hasActiveAccess = Boolean(user && (isTrialActive || hasPaidSubscription));
+
+    return {
+      trialStartedAt: effectiveTrialStart,
+      trialEndsAt: trialEndMs ? new Date(trialEndMs).toISOString() : null,
+      isTrialActive,
+      msRemaining,
+      daysRemaining,
+      hoursRemaining,
+      hasPaidSubscription,
+      hasActiveAccess,
+    };
+  };
+
+  const trialStatus = computeTrialStatus(
+    currentUser,
+    profileCreatedAt,
+    billingSubscription,
+    nowMs
+  );
+
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
+
+  useEffect(() => {
+    profileCreatedAtRef.current = profileCreatedAt;
+  }, [profileCreatedAt]);
+
+  useEffect(() => {
+    billingSubscriptionRef.current = billingSubscription;
+  }, [billingSubscription]);
 
   useEffect(() => {
     draftsRef.current = drafts;
@@ -116,6 +184,73 @@ export default function App() {
     atsSettingsRef.current = atsSettings;
   }, [atsSettings]);
 
+  // Periodically refresh current clock for accurate 3-day trial countdown
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  // Capture Stripe Checkout return params (?checkout=success&session_id=... or ?checkout=cancelled)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutState = params.get('checkout');
+    const sessionId = params.get('session_id');
+    if (checkoutState === 'success' && sessionId) {
+      setPendingCheckoutSessionId(sessionId);
+      setBillingModal({ open: true, reason: null });
+      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
+    } else if (checkoutState === 'cancelled') {
+      setToastMessage('Stripe checkout was cancelled. You can subscribe anytime.');
+      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
+    }
+  }, []);
+
+  // Verify completed Stripe Checkout session once authenticated user is available
+  useEffect(() => {
+    if (!currentUser || !pendingCheckoutSessionId) return;
+    let active = true;
+    setVerifyingCheckout(true);
+    (async () => {
+      try {
+        const res = await fetch('/api/billing/verify-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: pendingCheckoutSessionId,
+            uid: currentUser.uid,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.subscription) {
+          throw new Error(data?.error || 'Could not verify Stripe payment.');
+        }
+        await saveBillingSubscriptionToFirestore(currentUser.uid, data.subscription);
+        if (!active) return;
+        setBillingSubscription({
+          ownerId: currentUser.uid,
+          ...data.subscription,
+        });
+        setPendingCheckoutSessionId(null);
+        setBillingModal({ open: false, reason: null });
+        setToastMessage('ResumeIQ Pro subscription activated!');
+      } catch (err) {
+        if (!active) return;
+        setPendingCheckoutSessionId(null);
+        setBillingModal({
+          open: true,
+          reason: err instanceof Error ? err.message : 'Unable to verify Stripe payment.',
+        });
+      } finally {
+        if (active) {
+          setVerifyingCheckout(false);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [currentUser, pendingCheckoutSessionId]);
+
   // Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -123,6 +258,9 @@ export default function App() {
       setAuthReady(true);
       if (user) {
         setLocalGuestMode(false);
+      } else {
+        setProfileCreatedAt(null);
+        setBillingSubscription(null);
       }
     });
     return () => unsubscribe();
@@ -147,6 +285,12 @@ export default function App() {
       if (cancelled) return;
 
       unsubscribeWorkspace = subscribeUserWorkspace(uid, {
+        onProfileTimestamp: (createdAtIso) => {
+          setProfileCreatedAt(createdAtIso);
+        },
+        onBilling: (sub) => {
+          setBillingSubscription(sub);
+        },
         onDrafts: (cloudDrafts) => {
           if (cloudDrafts.length > 0) {
             setDrafts(cloudDrafts);
@@ -274,12 +418,50 @@ export default function App() {
     return false;
   };
 
+  const requireEntitlement = (
+    authReason: string,
+    billingReason: string,
+    pendingAction: () => void
+  ): boolean => {
+    if (
+      !requireAuth(authReason, () => {
+        const status = computeTrialStatus(
+          currentUserRef.current,
+          profileCreatedAtRef.current,
+          billingSubscriptionRef.current,
+          Date.now()
+        );
+        if (!status.hasActiveAccess) {
+          setBillingModal({ open: true, reason: billingReason });
+          return;
+        }
+        pendingAction();
+      })
+    ) {
+      return false;
+    }
+
+    const status = computeTrialStatus(
+      currentUserRef.current,
+      profileCreatedAtRef.current,
+      billingSubscriptionRef.current,
+      Date.now()
+    );
+    if (!status.hasActiveAccess) {
+      setBillingModal({ open: true, reason: billingReason });
+      return false;
+    }
+    return true;
+  };
+
   const handleSignOut = async () => {
     if (cloudDraftSyncTimerRef.current !== null) {
       window.clearTimeout(cloudDraftSyncTimerRef.current);
       cloudDraftSyncTimerRef.current = null;
     }
     await signOutAccount();
+    setProfileCreatedAt(null);
+    setBillingSubscription(null);
     setLocalGuestMode(false);
     notify('Signed out of Gmail workspace.');
   };
@@ -409,8 +591,9 @@ export default function App() {
 
   const handleExportPdf = () => {
     if (
-      !requireAuth(
-        'Sign in with your Gmail account to export your resume as a print-ready PDF.',
+      !requireEntitlement(
+        'Sign in with your Gmail account to start your 3-day free trial and export print-ready PDFs.',
+        'Your 3-day free trial has ended. Subscribe to ResumeIQ Pro to export print-ready PDFs.',
         () => window.print()
       )
     ) {
@@ -421,8 +604,9 @@ export default function App() {
 
   const handleExportJson = () => {
     if (
-      !requireAuth(
-        'Sign in with your Gmail account to export your resume JSON backup.',
+      !requireEntitlement(
+        'Sign in with your Gmail account to start your 3-day free trial and export JSON backups.',
+        'Your 3-day free trial has ended. Subscribe to ResumeIQ Pro to export JSON backups.',
         () => exportDraftToJsonFile(activeDraft)
       )
     ) {
@@ -451,8 +635,9 @@ export default function App() {
 
   const runAtsAnalysis = async (overrideJobId?: string | null) => {
     if (
-      !requireAuth(
-        'Sign in with your Gmail account to run an ATS compatibility scan and generate keyword recommendations.',
+      !requireEntitlement(
+        'Sign in with your Gmail account to start your 3-day free trial and run ATS compatibility scans.',
+        'Your 3-day free trial has ended. Subscribe to ResumeIQ Pro to run unlimited ATS scans.',
         () => {
           void runAtsAnalysis(overrideJobId);
         }
@@ -665,6 +850,7 @@ export default function App() {
         showSaved={showSaved}
         theme={theme}
         user={currentUser}
+        trialStatus={trialStatus}
         onToggleTheme={handleToggleTheme}
         onSelectDraft={(id) => setActiveDraftId(id)}
         onSelectJob={(id) => setActiveJobId(id)}
@@ -676,6 +862,7 @@ export default function App() {
         onRunAnalysis={() => runAtsAnalysis()}
         onOpenTemplatesSheet={() => setMobileTemplatesSheetOpen(true)}
         onOpenSettings={() => setSettingsModalOpen(true)}
+        onOpenBilling={() => setBillingModal({ open: true, reason: null })}
         onSignOut={handleSignOut}
         onOpenLogin={() => setLocalGuestMode(false)}
       />
@@ -692,7 +879,9 @@ export default function App() {
                   activeJob={activeJob}
                   atsSettings={atsSettings}
                   isAuthenticated={Boolean(currentUser)}
+                  hasActiveAccess={trialStatus.hasActiveAccess}
                   onRequireAuth={(reason) => setAuthPrompt({ open: true, reason })}
+                  onRequireBilling={(reason) => setBillingModal({ open: true, reason })}
                   onOpenSettings={() => setSettingsModalOpen(true)}
                   onChangeDraft={updateActiveDraft}
                   onNotify={notify}
@@ -806,7 +995,9 @@ export default function App() {
               activeJob={activeJob}
               atsSettings={atsSettings}
               isAuthenticated={Boolean(currentUser)}
+              hasActiveAccess={trialStatus.hasActiveAccess}
               onRequireAuth={(reason) => setAuthPrompt({ open: true, reason })}
+              onRequireBilling={(reason) => setBillingModal({ open: true, reason })}
               onOpenSettings={() => setSettingsModalOpen(true)}
               onChangeDraft={updateActiveDraft}
               onNotify={notify}
@@ -933,6 +1124,18 @@ export default function App() {
         onUpdateSettings={handleUpdateAtsSettings}
         onClose={() => setSettingsModalOpen(false)}
         onNotify={notify}
+      />
+
+      {/* 3-Day Free Trial & Stripe Billing Modal */}
+      <BillingModal
+        open={billingModal.open}
+        user={currentUser}
+        trialStatus={trialStatus}
+        subscription={billingSubscription}
+        reason={billingModal.reason}
+        verifyingCheckout={verifyingCheckout}
+        onSignInWithGmail={handleSignInWithGmail}
+        onClose={() => setBillingModal({ open: false, reason: null })}
       />
 
       {/* Gmail Sign-In Gate Modal */}

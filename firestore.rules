@@ -183,6 +183,28 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // Validation Blueprint: BillingSubscriptionDoc
+    function isValidBillingSubscription(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'plan', 'status', 'stripeSessionId',
+          'receiptToken', 'expiresAt', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'plan', 'status', 'stripeSessionId',
+          'receiptToken', 'expiresAt', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.plan in ['monthly', 'annual']
+        && data.status == 'active'
+        && data.stripeSessionId is string && data.stripeSessionId.size() >= 1 && data.stripeSessionId.size() <= 255
+        && data.receiptToken is string && data.receiptToken.size() >= 16 && data.receiptToken.size() <= 256
+        && data.expiresAt is string && data.expiresAt.size() >= 10 && data.expiresAt.size() <= 64
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     // Private User Profile (PII isolated to owner)
     match /users/{userId} {
       allow get: if isValidId(userId) && isOwner(userId);
@@ -302,6 +324,31 @@ service cloud.firestore {
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'engine', 'autoFallback', 'strictness',
             'maxBulletUpgrades', 'includeTailoredSummary', 'updatedAt'
+          ])
+          && parentUserExists(userId);
+        allow delete: if false;
+      }
+
+      // User Billing Subscription
+      match /billing/{billingId} {
+        allow get: if isValidId(userId) && billingId == 'subscription' && isOwner(userId) && parentUserExists(userId);
+        allow list: if false;
+        allow create: if isValidId(userId)
+          && billingId == 'subscription'
+          && isOwner(userId)
+          && isValidBillingSubscription(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && parentUserExists(userId);
+        allow update: if isValidId(userId)
+          && billingId == 'subscription'
+          && isOwner(userId)
+          && isValidBillingSubscription(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'plan', 'status', 'stripeSessionId', 'receiptToken', 'expiresAt', 'updatedAt'
           ])
           && parentUserExists(userId);
         allow delete: if false;
