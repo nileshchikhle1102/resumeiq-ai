@@ -4,8 +4,10 @@ import {
   AtsEngineMode,
   AtsSettings,
   AtsStrictness,
+  ChatMessage,
   JobTarget,
   ResumeDraft,
+  SalaryEstimateResult,
   SkillGroup,
   SkillItem,
   SkillProficiency,
@@ -18,6 +20,8 @@ const STORAGE_KEYS = {
   ACTIVE: 'ats_studio_active_v1',
   THEME: 'ats_studio_theme_v1',
   ATS_SETTINGS: 'ats_studio_settings_v1',
+  SALARY_CACHE: 'ats_studio_salary_cache_v1',
+  CHAT_HISTORY: 'ats_studio_chat_history_v1',
 } as const;
 
 export const DEFAULT_ATS_SETTINGS: AtsSettings = {
@@ -336,3 +340,57 @@ export function parseImportedAtsSettingsJson(rawText: string): AtsSettings {
   }
   return normalizeAtsSettings(candidate);
 }
+
+export function getSalaryCacheKey(jobTitle: string, location: string): string {
+  const normTitle = jobTitle.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normLoc = (location.trim() || 'remote').toLowerCase().replace(/\s+/g, ' ');
+  return `${normTitle}::${normLoc}`;
+}
+
+export function loadSalaryEstimates(): Record<string, SalaryEstimateResult> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SALARY_CACHE);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, SalaryEstimateResult>;
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return {};
+}
+
+export function saveSalaryEstimates(cache: Record<string, SalaryEstimateResult>): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.SALARY_CACHE, JSON.stringify(cache));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function loadChatHistory(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.slice(-40);
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return [];
+}
+
+export function saveChatHistory(messages: ChatMessage[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(messages.slice(-40)));
+  } catch {
+    // Ignore
+  }
+}
+
+

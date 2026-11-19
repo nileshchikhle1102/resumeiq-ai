@@ -36,14 +36,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               key={tab.id}
               type="button"
               onClick={() => onSelectMobileTab(tab.id)}
-              className={`flex flex-col items-center justify-center min-h-[44px] transition-colors cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-1 min-h-[44px] py-1 transition-colors cursor-pointer ${
                 isActive
                   ? 'text-blue-700 dark:text-blue-400'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
-              <Icon className="w-5 h-5" aria-hidden="true" />
-              <span className="text-[11px] font-medium leading-none mt-1 whitespace-nowrap">
+              <Icon className="w-5 h-5 shrink-0" aria-hidden="true" />
+              <span className="text-[11px] font-medium leading-none whitespace-nowrap">
                 {tab.label}
               </span>
             </button>

@@ -54,9 +54,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       {/* Minimal Top Bar */}
       <header className="w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
         <div className="max-w-[1120px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-5 h-5 text-blue-700 dark:text-blue-400" aria-hidden="true" />
-            <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <FileText className="w-5 h-5 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+            <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap">
               ResumeIQ
             </span>
           </div>
@@ -65,16 +65,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             type="button"
             onClick={onToggleTheme}
             aria-label={isDark ? 'Switch to Daylight Studio theme' : 'Switch to Dark Studio theme'}
-            className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             {isDark ? (
               <>
-                <Sun className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
                 <span>Daylight</span>
               </>
             ) : (
               <>
-                <Moon className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
+                <Moon className="w-3.5 h-3.5 text-slate-600 shrink-0" aria-hidden="true" />
                 <span>Dark Studio</span>
               </>
             )}
@@ -170,7 +170,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 >
                   {signingIn ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-700" aria-hidden="true" />
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-700 shrink-0" aria-hidden="true" />
                       <span>Connecting Gmail Account...</span>
                     </>
                   ) : (
@@ -214,7 +214,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   type="button"
                   onClick={onContinueLocal}
                   disabled={signingIn}
-                  className="w-full min-h-[42px] px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors cursor-pointer"
+                  className="w-full min-h-[42px] px-4 py-2.5 inline-flex items-center justify-center text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors cursor-pointer"
                 >
                   Continue in Local Browser Mode (No Cloud Sync)
                 </button>

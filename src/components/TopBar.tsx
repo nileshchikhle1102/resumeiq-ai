@@ -65,9 +65,9 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             type="button"
             onClick={onExportPdf}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
           >
-            <Printer className="w-4 h-4" aria-hidden="true" />
+            <Printer className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Export PDF</span>
           </button>
         </div>
@@ -81,9 +81,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           type="button"
           onClick={onExportPdf}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] text-xs font-semibold text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 active:bg-slate-800 rounded-lg whitespace-nowrap shrink-0"
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 min-h-[36px] text-xs font-semibold text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 active:bg-slate-800 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
         >
-          <Printer className="w-3.5 h-3.5" aria-hidden="true" />
+          <Printer className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>Export PDF</span>
         </button>
       </div>

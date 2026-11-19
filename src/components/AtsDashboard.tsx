@@ -124,23 +124,23 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
           <button
             type="button"
             onClick={onRunAnalysis}
-            className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-lg cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 min-h-[40px] px-4 py-2 text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4 shrink-0" />
             <span>Retry ATS Scan</span>
           </button>
           <button
             type="button"
             onClick={onOpenSettings}
-            className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <SlidersHorizontal className="w-4 h-4" />
+            <SlidersHorizontal className="w-4 h-4 shrink-0" />
             <span>ATS Settings</span>
           </button>
           <button
             type="button"
             onClick={onGoToJobs}
-            className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white whitespace-nowrap shrink-0 cursor-pointer"
           >
             <span>Edit Target Job</span>
           </button>
@@ -170,24 +170,24 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
           <button
             type="button"
             onClick={onRunAnalysis}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-lg transition-colors cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
           >
-            <ScanSearch className="w-4 h-4" />
+            <ScanSearch className="w-4 h-4 shrink-0" />
             <span>Run ATS Analysis</span>
           </button>
           <button
             type="button"
             onClick={onGoToJobs}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
           >
             <span>{activeJob ? 'Change Target Job' : 'Paste Job Description'}</span>
           </button>
           <button
             type="button"
             onClick={onOpenSettings}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
           >
-            <SlidersHorizontal className="w-4 h-4" />
+            <SlidersHorizontal className="w-4 h-4 shrink-0" />
             <span>ATS Settings</span>
           </button>
         </div>
@@ -250,7 +250,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap text-xs">
                 <span className={`font-semibold ${visuals.textClass}`}>{visuals.label}</span>
                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">
@@ -283,13 +283,13 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <button
               type="button"
               onClick={onOpenSettings}
               className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
               <span>Settings</span>
             </button>
             <button
@@ -297,7 +297,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
               onClick={onRunAnalysis}
               className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3.5 py-2 text-xs font-medium text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5 shrink-0" />
               <span>Re-run Scan</span>
             </button>
           </div>
@@ -365,7 +365,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                       key={`${item.keyword}-${idx}`}
                       className="p-3 flex items-start justify-between gap-3"
                     >
-                      <div className="space-y-0.5 min-w-0">
+                      <div className="space-y-0.5 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-xs font-semibold text-slate-900 dark:text-slate-100">
                             {item.keyword}
@@ -404,7 +404,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                         type="button"
                         disabled={alreadyInSkills}
                         onClick={() => onAddKeywordToSkills(item.keyword)}
-                        className={`inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-md shrink-0 transition-colors cursor-pointer ${
+                        className={`inline-flex items-center justify-center gap-1 min-h-[32px] px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                           alreadyInSkills
                             ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 cursor-default'
                             : 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60'
@@ -412,12 +412,12 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                       >
                         {alreadyInSkills ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>Added</span>
                           </>
                         ) : (
                           <>
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 shrink-0" />
                             <span>Add</span>
                           </>
                         )}
@@ -458,7 +458,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
       {/* 3. AI Tailored Summary & Bullet Upgrades */}
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+          <Sparkles className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             One-Click AI Content Upgrades
           </h3>
@@ -478,7 +478,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                   onApplyTailoredSummary(report.tailoredSummary);
                   setSummaryApplied(true);
                 }}
-                className={`inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
+                className={`inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                   summaryApplied
                     ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60'
                     : 'text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500'
@@ -486,7 +486,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
               >
                 {summaryApplied ? (
                   <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     <span>Applied to Summary</span>
                   </>
                 ) : (
@@ -529,7 +529,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                         );
                         setAppliedBullets((prev) => ({ ...prev, [upgradeKey]: true }));
                       }}
-                      className={`inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
+                      className={`inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                         isApplied
                           ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60'
                           : 'text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white'
@@ -537,7 +537,7 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                     >
                       {isApplied ? (
                         <>
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           <span>Applied</span>
                         </>
                       ) : (
@@ -556,8 +556,8 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                       </p>
                     </div>
                     <div className="bg-blue-50/60 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/60 rounded-lg p-3 space-y-1">
-                      <span className="font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1">
-                        <ArrowRight className="w-3 h-3" />
+                      <span className="font-semibold text-blue-800 dark:text-blue-300 inline-flex items-center gap-1">
+                        <ArrowRight className="w-3 h-3 shrink-0" />
                         <span>Optimized Bullet</span>
                       </span>
                       <p className="text-slate-900 dark:text-slate-100 font-medium leading-relaxed">
@@ -593,8 +593,8 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
                 ) : (
                   <XCircle className="w-4 h-4 text-red-700 dark:text-red-400 shrink-0 mt-0.5" />
                 )}
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 text-xs">
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {check.label}
                     </span>
@@ -626,19 +626,19 @@ export const AtsDashboard: React.FC<AtsDashboardProps> = ({
             {report.sectionFeedback.map((sec, idx) => (
               <div key={`${sec.section}-${idx}`} className="py-2.5 first:pt-0 last:pb-0 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     {sec.status === 'strong' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                     ) : sec.status === 'needs_work' ? (
-                      <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                      <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-700 dark:text-red-400" />
+                      <XCircle className="w-4 h-4 text-red-700 dark:text-red-400 shrink-0" />
                     )}
-                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                       {sec.section}
                     </span>
                   </div>
-                  <span className="font-mono text-xs font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                  <span className="font-mono text-xs font-semibold text-slate-900 dark:text-slate-100 tabular-nums whitespace-nowrap shrink-0">
                     {sec.score}/100
                   </span>
                 </div>

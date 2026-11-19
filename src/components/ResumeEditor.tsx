@@ -241,20 +241,20 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('personal')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Contact &amp; Header
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
               {draft.personalInfo.fullName || 'Add name and contact details'}
             </p>
           </div>
           {openSections.personal ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -394,9 +394,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('summary')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Professional Summary
             </h2>
@@ -405,9 +405,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             </p>
           </div>
           {openSections.summary ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -421,12 +421,12 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 type="button"
                 onClick={handleGenerateSummary}
                 disabled={summarySuggestion.loading}
-                className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 disabled:opacity-60 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 disabled:opacity-60 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 {summarySuggestion.loading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                 ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
                 )}
                 <span>Tailor Summary with AI</span>
               </button>
@@ -443,13 +443,13 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             />
 
             {summarySuggestion.error && (
-              <div className="flex items-center justify-between gap-2 text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
-                <span>{summarySuggestion.error}</span>
+              <div className="flex items-start sm:items-center justify-between gap-2 text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
+                <span className="min-w-0 flex-1">{summarySuggestion.error}</span>
                 {onOpenSettings && (
                   <button
                     type="button"
                     onClick={onOpenSettings}
-                    className="shrink-0 font-semibold underline cursor-pointer"
+                    className="shrink-0 font-semibold underline whitespace-nowrap cursor-pointer"
                   >
                     ATS Settings
                   </button>
@@ -459,11 +459,11 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
 
             {summarySuggestion.result && (
               <div className="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                     Suggested Tailored Summary
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => {
@@ -474,9 +474,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         setSummarySuggestion({ loading: false, error: null, result: null });
                         onNotify('Tailored summary applied.');
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-md cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1 min-h-[30px] px-2.5 py-1 text-xs font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-md whitespace-nowrap cursor-pointer"
                     >
-                      <Check className="w-3.5 h-3.5" />
+                      <Check className="w-3.5 h-3.5 shrink-0" />
                       <span>Apply</span>
                     </button>
                     <button
@@ -484,9 +484,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                       onClick={() =>
                         setSummarySuggestion({ loading: false, error: null, result: null })
                       }
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-md cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1 min-h-[30px] px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-md whitespace-nowrap cursor-pointer"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3.5 h-3.5 shrink-0" />
                       <span>Dismiss</span>
                     </button>
                   </div>
@@ -508,9 +508,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('experience')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Work Experience
             </h2>
@@ -519,9 +519,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             </p>
           </div>
           {openSections.experience ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -530,7 +530,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             {draft.experiences.map((exp, expIdx) => (
               <div key={exp.id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tabular-nums">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 tabular-nums min-w-0 truncate">
                     Role {expIdx + 1}
                     {exp.company ? ` · ${exp.company}` : ''}
                   </span>
@@ -542,9 +542,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         experiences: prev.experiences.filter((e) => e.id !== exp.id),
                       }))
                     }
-                    className="inline-flex items-center gap-1 min-h-[34px] px-2 py-1 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1 min-h-[34px] px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
                     <span>Remove</span>
                   </button>
                 </div>
@@ -650,7 +650,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                   </div>
                 </div>
 
-                <label className="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                <label className="inline-flex items-center gap-2 min-h-[32px] text-xs text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={exp.current}
@@ -662,14 +662,14 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         ),
                       }))
                     }
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-700 focus:ring-blue-600"
+                    className="w-4 h-4 shrink-0 rounded border-slate-300 dark:border-slate-600 text-blue-700 focus:ring-blue-600"
                   />
                   <span>Currently working in this role</span>
                 </label>
 
                 {/* Bullets */}
                 <div className="space-y-2.5 pt-1">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                       Achievement Bullets
                     </span>
@@ -685,9 +685,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                           ),
                         }))
                       }
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1 min-h-[30px] px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-md whitespace-nowrap shrink-0 cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-3.5 h-3.5 shrink-0" />
                       <span>Add Bullet</span>
                     </button>
                   </div>
@@ -715,12 +715,13 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                               }))
                             }
                             placeholder="Action verb + measurable outcome + technology/method..."
-                            className="flex-1 px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            className="flex-1 min-w-0 min-h-[74px] px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                           />
                           <div className="flex flex-col gap-1 shrink-0">
                             <button
                               type="button"
                               title="Optimize bullet with AI"
+                              aria-label="Optimize bullet with AI"
                               disabled={!bullet.trim() || activeSug?.loading}
                               onClick={() =>
                                 handleRewriteBullet(
@@ -734,15 +735,16 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                               className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] px-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
                             >
                               {activeSug?.loading ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                               ) : (
-                                <Sparkles className="w-3.5 h-3.5" />
+                                <Sparkles className="w-3.5 h-3.5 shrink-0" />
                               )}
                             </button>
                             {exp.bullets.length > 1 && (
                               <button
                                 type="button"
                                 title="Delete bullet"
+                                aria-label="Delete bullet"
                                 onClick={() =>
                                   onChangeDraft((prev) => ({
                                     ...prev,
@@ -757,20 +759,20 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                                 }
                                 className="inline-flex items-center justify-center min-h-[34px] min-w-[36px] text-slate-400 dark:text-slate-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors cursor-pointer"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
                               </button>
                             )}
                           </div>
                         </div>
 
                         {activeSug?.error && (
-                          <div className="flex items-center justify-between gap-2 text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
-                            <span>{activeSug.error}</span>
+                          <div className="flex items-start sm:items-center justify-between gap-2 text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
+                            <span className="min-w-0 flex-1">{activeSug.error}</span>
                             {onOpenSettings && (
                               <button
                                 type="button"
                                 onClick={onOpenSettings}
-                                className="shrink-0 font-semibold underline cursor-pointer"
+                                className="shrink-0 font-semibold underline whitespace-nowrap cursor-pointer"
                               >
                                 ATS Settings
                               </button>
@@ -780,11 +782,11 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
 
                         {activeSug?.result && (
                           <div className="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
                               <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                                 AI Optimized Bullet
                               </span>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -800,17 +802,17 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                                     setBulletSuggestion(null);
                                     onNotify('Optimized bullet applied.');
                                   }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-md cursor-pointer"
+                                  className="inline-flex items-center justify-center gap-1 min-h-[30px] px-2.5 py-1 text-xs font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-md whitespace-nowrap cursor-pointer"
                                 >
-                                  <Check className="w-3.5 h-3.5" />
+                                  <Check className="w-3.5 h-3.5 shrink-0" />
                                   <span>Apply</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setBulletSuggestion(null)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-md cursor-pointer"
+                                  className="inline-flex items-center justify-center gap-1 min-h-[30px] px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-md whitespace-nowrap cursor-pointer"
                                 >
-                                  <X className="w-3.5 h-3.5" />
+                                  <X className="w-3.5 h-3.5 shrink-0" />
                                   <span>Dismiss</span>
                                 </button>
                               </div>
@@ -856,7 +858,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 }
                 className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Add Work Experience</span>
               </button>
             </div>
@@ -869,9 +871,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('skills')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Skills &amp; Competencies
             </h2>
@@ -881,9 +883,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             </p>
           </div>
           {openSections.skills ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -904,7 +906,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                       }))
                     }
                     placeholder="Skill Category"
-                    className="flex-1 min-h-[38px] px-3 py-1.5 text-sm font-medium bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    className="flex-1 min-w-0 min-h-[38px] px-3 py-1.5 text-sm font-medium bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   />
                   {draft.skillGroups.length > 1 && (
                     <button
@@ -915,9 +917,10 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                           skillGroups: prev.skillGroups.filter((g) => g.id !== group.id),
                         }))
                       }
-                      className="min-h-[38px] px-2.5 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1 min-h-[38px] px-2.5 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                     >
-                      Remove
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Remove</span>
                     </button>
                   )}
                 </div>
@@ -929,11 +932,11 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         key={`${skill.name}-${sIdx}`}
                         className="px-3 py-2 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2"
                       >
-                        <span className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                        <span className="text-sm font-medium text-slate-800 dark:text-slate-100 min-w-0 flex-1 truncate">
                           {skill.name}
                         </span>
 
-                        <div className="flex items-center gap-2 shrink-0 ml-auto">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
                           <div
                             role="group"
                             aria-label={`Proficiency for ${skill.name}`}
@@ -960,7 +963,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                                         }),
                                       }))
                                     }
-                                    className={`px-2 py-1 min-h-[28px] text-[11px] font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                                    className={`inline-flex items-center justify-center px-2 py-1 min-h-[28px] text-[11px] font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
                                       isActive
                                         ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -987,9 +990,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                             }
                             title={`Remove ${skill.name}`}
                             aria-label={`Remove ${skill.name}`}
-                            className="min-h-[32px] min-w-[32px] inline-flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 rounded-md transition-colors cursor-pointer"
+                            className="min-h-[32px] min-w-[32px] inline-flex items-center justify-center shrink-0 text-slate-400 dark:text-slate-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/60 rounded-md transition-colors cursor-pointer"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5 shrink-0" />
                           </button>
                         </div>
                       </div>
@@ -1011,9 +1014,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                       }
                     }}
                     placeholder="Add skill or comma-separated list (Enter)"
-                    className="flex-1 min-h-[40px] px-3 py-1.5 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    className="flex-1 min-w-0 min-h-[40px] px-3 py-1.5 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <select
                       aria-label="New skill proficiency level"
                       value={skillProficiencies[group.id] ?? 'Intermediate'}
@@ -1023,7 +1026,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                           [group.id]: e.target.value as SkillProficiency,
                         }))
                       }
-                      className="min-h-[40px] px-2.5 py-1.5 text-xs font-medium bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                      className="flex-1 sm:flex-initial min-h-[40px] px-2.5 py-1.5 text-xs font-medium bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                     >
                       <option value="Beginner">Beginner</option>
                       <option value="Intermediate">Intermediate</option>
@@ -1032,7 +1035,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAddSkillToGroup(group.id)}
-                      className="min-h-[40px] px-3.5 py-1.5 text-xs font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center justify-center min-h-[40px] px-3.5 py-1.5 text-xs font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg cursor-pointer whitespace-nowrap shrink-0"
                     >
                       Add
                     </button>
@@ -1055,7 +1058,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 }
                 className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Add Skill Category</span>
               </button>
             </div>
@@ -1068,18 +1071,18 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('projects')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Projects</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
               {draft.projects.length} {draft.projects.length === 1 ? 'project' : 'projects'}
             </p>
           </div>
           {openSections.projects ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -1088,7 +1091,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             {draft.projects.map((proj) => (
               <div key={proj.id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 min-w-0 truncate">
                     {proj.name || 'Project'}
                   </span>
                   <button
@@ -1099,9 +1102,10 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         projects: prev.projects.filter((p) => p.id !== proj.id),
                       }))
                     }
-                    className="text-xs font-medium text-red-700 dark:text-red-400 hover:underline cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1 min-h-[34px] px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
-                    Remove
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Remove</span>
                   </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1184,7 +1188,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 }
                 className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Add Project</span>
               </button>
             </div>
@@ -1197,18 +1201,18 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('education')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Education</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
               {draft.education.length} {draft.education.length === 1 ? 'entry' : 'entries'}
             </p>
           </div>
           {openSections.education ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -1217,7 +1221,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             {draft.education.map((edu) => (
               <div key={edu.id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 min-w-0 truncate">
                     {edu.institution || 'Education Entry'}
                   </span>
                   <button
@@ -1228,9 +1232,10 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         education: prev.education.filter((e) => e.id !== edu.id),
                       }))
                     }
-                    className="text-xs font-medium text-red-700 dark:text-red-400 hover:underline cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1 min-h-[34px] px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
-                    Remove
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Remove</span>
                   </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1330,7 +1335,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 }
                 className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Add Education</span>
               </button>
             </div>
@@ -1343,9 +1348,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleSection('certifications')}
-          className="w-full flex items-center justify-between px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 min-h-[48px] text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Certifications
             </h2>
@@ -1354,9 +1359,9 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
             </p>
           </div>
           {openSections.certifications ? (
-            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
           )}
         </button>
 
@@ -1407,7 +1412,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                       }))
                     }
                     placeholder="Issuing Organization"
-                    className={`flex-1 ${COMPACT_INPUT_CLASS}`}
+                    className={`flex-1 min-w-0 ${COMPACT_INPUT_CLASS}`}
                   />
                   <button
                     type="button"
@@ -1417,9 +1422,10 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                         certifications: prev.certifications.filter((c) => c.id !== cert.id),
                       }))
                     }
-                    className="min-h-[40px] px-3 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1 min-h-[40px] px-3 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
-                    Remove
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Remove</span>
                   </button>
                 </div>
               </div>
@@ -1438,7 +1444,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                 }
                 className="w-full min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Add Certification</span>
               </button>
             </div>

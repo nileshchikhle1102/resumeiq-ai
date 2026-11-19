@@ -122,9 +122,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <div className="w-full sm:max-w-2xl max-h-[88vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl flex flex-col overflow-hidden shadow-xl">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Cpu className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 ATS Check Configuration
               </h2>
@@ -137,18 +137,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close settings"
-            className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
+            className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 shrink-0" />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6 studio-scroll">
           {/* Server Connection Status */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+              <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5 sm:mt-0" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                   Server-Side Gemini Connection
@@ -158,17 +158,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
               </div>
             </div>
-            <div className="shrink-0 text-xs font-medium flex items-center gap-1.5">
+            <div className="shrink-0 text-xs font-medium inline-flex items-center gap-1.5 whitespace-nowrap">
               {serverStatus.loading ? (
                 <span className="text-slate-500 dark:text-slate-400">Checking...</span>
               ) : serverStatus.geminiConfigured ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                   <span className="text-emerald-700 dark:text-emerald-400">Connected</span>
                 </>
               ) : (
                 <>
-                  <XCircle className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                  <XCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                   <span className="text-amber-700 dark:text-amber-400">Not Configured</span>
                 </>
               )}
@@ -194,7 +194,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-x-3 gap-y-0.5 flex-wrap">
                       <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {eng.name}
                       </span>
@@ -215,7 +215,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Scoring Strictness
               </span>
-              <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <div className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 {(
                   [
                     { id: 'balanced', label: 'Balanced' },
@@ -227,7 +227,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     key={mode.id}
                     type="button"
                     onClick={() => onUpdateSettings({ ...settings, strictness: mode.id })}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
+                    className={`inline-flex items-center justify-center px-3 py-1.5 min-h-[34px] text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                       settings.strictness === mode.id
                         ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                         : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -243,13 +243,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Max AI Bullet Upgrades
               </span>
-              <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <div className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 {([2, 4, 6] as const).map((count) => (
                   <button
                     key={count}
                     type="button"
                     onClick={() => onUpdateSettings({ ...settings, maxBulletUpgrades: count })}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md tabular-nums transition-colors cursor-pointer ${
+                    className={`inline-flex items-center justify-center px-3 py-1.5 min-h-[34px] text-xs font-medium rounded-md tabular-nums transition-colors whitespace-nowrap cursor-pointer ${
                       settings.maxBulletUpgrades === count
                         ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                         : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -265,7 +265,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Toggles */}
           <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
             <label className="flex items-start justify-between gap-4 cursor-pointer">
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
                   Auto-Fallback on High Demand (503)
                 </span>
@@ -279,12 +279,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onChange={(e) =>
                   onUpdateSettings({ ...settings, autoFallback: e.target.checked })
                 }
-                className="mt-1 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-700 focus:ring-blue-600"
+                className="mt-0.5 shrink-0 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-700 focus:ring-blue-600"
               />
             </label>
 
             <label className="flex items-start justify-between gap-4 cursor-pointer">
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
                   Generate Tailored Executive Summary
                 </span>
@@ -301,7 +301,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     includeTailoredSummary: e.target.checked,
                   })
                 }
-                className="mt-1 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-700 focus:ring-blue-600"
+                className="mt-0.5 shrink-0 w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-700 focus:ring-blue-600"
               />
             </label>
           </div>
@@ -316,17 +316,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 exportAtsSettingsJson(settings);
                 onNotify('Exported ATS configuration JSON.');
               }}
-              className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5 shrink-0" />
               <span>Export Config</span>
             </button>
             <button
               type="button"
               onClick={() => configFileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5" />
+              <Upload className="w-3.5 h-3.5 shrink-0" />
               <span>Upload Config</span>
             </button>
             <button
@@ -335,9 +335,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onUpdateSettings({ ...DEFAULT_ATS_SETTINGS });
                 onNotify('Reset ATS settings to defaults.');
               }}
-              className="inline-flex items-center gap-1.5 min-h-[36px] px-2.5 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-2.5 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3.5 h-3.5 shrink-0" />
               <span>Reset</span>
             </button>
           </div>
@@ -345,7 +345,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[38px] px-4 py-1.5 text-xs font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg cursor-pointer"
+            className="inline-flex items-center justify-center min-h-[38px] px-4 py-1.5 text-xs font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
           >
             Done
           </button>

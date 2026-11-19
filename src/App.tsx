@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, Printer, Trash2, X } from 'lucide-react';
 import { AtsDashboard } from './components/AtsDashboard';
 import { AuthPromptModal } from './components/AuthPromptModal';
 import { BillingModal } from './components/BillingModal';
+import { CareerChatDrawer } from './components/CareerChatDrawer';
 import { JobTargetsView } from './components/JobTargetsView';
 import { LoginPage } from './components/LoginPage';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -31,9 +32,11 @@ import {
   AtsAnalysisReport,
   AtsSettings,
   BillingSubscription,
+  ChatMessage,
   JobTarget,
   MobileTab,
   ResumeDraft,
+  SalaryEstimateResult,
   TemplateId,
   TrialStatusInfo,
   WorkspaceTab,
@@ -44,16 +47,20 @@ import {
   getReportCacheKey,
   loadActiveSelections,
   loadAtsSettings,
+  loadChatHistory,
   loadDrafts,
   loadJobs,
   loadReports,
+  loadSalaryEstimates,
   loadTheme,
   parseImportedDraftJson,
   saveActiveSelections,
   saveAtsSettings,
+  saveChatHistory,
   saveDrafts,
   saveJobs,
   saveReports,
+  saveSalaryEstimates,
   saveTheme,
   StudioTheme,
 } from './utils/storage';
@@ -72,6 +79,9 @@ export default function App() {
   const [drafts, setDrafts] = useState<ResumeDraft[]>(() => loadDrafts());
   const [jobs, setJobs] = useState<JobTarget[]>(() => loadJobs());
   const [reports, setReports] = useState<Record<string, AtsAnalysisReport>>(() => loadReports());
+  const [salaryEstimates, setSalaryEstimates] = useState<Record<string, SalaryEstimateResult>>(
+    () => loadSalaryEstimates()
+  );
   const [atsSettings, setAtsSettings] = useState<AtsSettings>(() => loadAtsSettings());
 
   const initialSelections = loadActiveSelections(drafts, jobs);
@@ -82,6 +92,8 @@ export default function App() {
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>('builder');
   const [mobileTemplatesSheetOpen, setMobileTemplatesSheetOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => loadChatHistory());
   const [billingModal, setBillingModal] = useState<{ open: boolean; reason: string | null }>({
     open: false,
     reason: null,
@@ -379,6 +391,14 @@ export default function App() {
   useEffect(() => {
     saveReports(reports);
   }, [reports]);
+
+  useEffect(() => {
+    saveSalaryEstimates(salaryEstimates);
+  }, [salaryEstimates]);
+
+  useEffect(() => {
+    saveChatHistory(chatMessages);
+  }, [chatMessages]);
 
   useEffect(() => {
     saveAtsSettings(atsSettings);
@@ -800,7 +820,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4">
         <div className="flex items-center gap-2.5 text-sm font-medium text-slate-600 dark:text-slate-300">
-          <Loader2 className="w-4 h-4 animate-spin text-blue-700 dark:text-blue-400" />
+          <Loader2 className="w-4 h-4 animate-spin text-blue-700 dark:text-blue-400 shrink-0" />
           <span>Loading ResumeIQ...</span>
         </div>
       </div>
@@ -863,6 +883,7 @@ export default function App() {
         onOpenTemplatesSheet={() => setMobileTemplatesSheetOpen(true)}
         onOpenSettings={() => setSettingsModalOpen(true)}
         onOpenBilling={() => setBillingModal({ open: true, reason: null })}
+        onOpenChat={() => setChatDrawerOpen(true)}
         onSignOut={handleSignOut}
         onOpenLogin={() => setLocalGuestMode(false)}
       />
@@ -890,11 +911,11 @@ export default function App() {
 
               <div className="col-span-6 sticky top-[120px]">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                       Live Document Preview
                     </span>
-                    <div className="inline-flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <div className="inline-flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
                       {(['classic', 'modern', 'technical'] as TemplateId[]).map((tpl) => (
                         <button
                           key={tpl}
@@ -902,7 +923,7 @@ export default function App() {
                           onClick={() =>
                             updateActiveDraft((prev) => ({ ...prev, templateId: tpl }))
                           }
-                          className={`px-2.5 py-1 text-xs font-medium rounded-md capitalize transition-colors cursor-pointer ${
+                          className={`inline-flex items-center justify-center min-h-[28px] px-2.5 py-1 text-xs font-medium rounded-md capitalize whitespace-nowrap transition-colors cursor-pointer ${
                             activeDraft.templateId === tpl
                               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -941,6 +962,16 @@ export default function App() {
             <JobTargetsView
               jobs={jobs}
               activeJobId={activeJobId}
+              atsSettings={atsSettings}
+              isAuthenticated={Boolean(currentUser)}
+              hasActiveAccess={trialStatus.hasActiveAccess}
+              salaryEstimates={salaryEstimates}
+              onSaveSalaryEstimate={(cacheKey, estimate) => {
+                setSalaryEstimates((prev) => ({ ...prev, [cacheKey]: estimate }));
+                notify(`Updated salary range for ${estimate.jobTitle}.`);
+              }}
+              onRequireAuth={(reason) => setAuthPrompt({ open: true, reason })}
+              onRequireBilling={(reason) => setBillingModal({ open: true, reason })}
               onSelectJob={(id) => setActiveJobId(id)}
               onSaveJob={handleSaveJob}
               onDeleteJob={handleDeleteJob}
@@ -1015,10 +1046,10 @@ export default function App() {
                       onClick={() =>
                         updateActiveDraft((prev) => ({ ...prev, templateId: tpl }))
                       }
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize ${
+                      className={`inline-flex items-center justify-center min-h-[30px] px-3 py-1 text-xs font-medium rounded-md capitalize whitespace-nowrap cursor-pointer transition-colors ${
                         activeDraft.templateId === tpl
                           ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                          : 'text-slate-600 dark:text-slate-300'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       {tpl}
@@ -1028,9 +1059,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleExportPdf}
-                  className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 rounded-lg"
+                  className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-medium text-white dark:text-slate-950 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  <Printer className="w-3.5 h-3.5" />
+                  <Printer className="w-3.5 h-3.5 shrink-0" />
                   <span>Print PDF</span>
                 </button>
               </div>
@@ -1060,6 +1091,16 @@ export default function App() {
             <JobTargetsView
               jobs={jobs}
               activeJobId={activeJobId}
+              atsSettings={atsSettings}
+              isAuthenticated={Boolean(currentUser)}
+              hasActiveAccess={trialStatus.hasActiveAccess}
+              salaryEstimates={salaryEstimates}
+              onSaveSalaryEstimate={(cacheKey, estimate) => {
+                setSalaryEstimates((prev) => ({ ...prev, [cacheKey]: estimate }));
+                notify(`Updated salary range for ${estimate.jobTitle}.`);
+              }}
+              onRequireAuth={(reason) => setAuthPrompt({ open: true, reason })}
+              onRequireBilling={(reason) => setBillingModal({ open: true, reason })}
               onSelectJob={(id) => setActiveJobId(id)}
               onSaveJob={handleSaveJob}
               onDeleteJob={handleDeleteJob}
@@ -1083,16 +1124,17 @@ export default function App() {
           <div className="w-full max-h-[85vh] bg-slate-50 dark:bg-slate-950 rounded-t-3xl flex flex-col overflow-hidden border-t border-slate-200 dark:border-slate-800">
             <div className="pt-3 pb-2 px-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col items-center">
               <div className="w-10 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mb-2" />
-              <div className="w-full flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="w-full flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                   Templates, Drafts &amp; Export
                 </h2>
                 <button
                   type="button"
                   onClick={() => setMobileTemplatesSheetOpen(false)}
-                  className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg"
+                  aria-label="Close templates sheet"
+                  className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5 shrink-0" />
                 </button>
               </div>
             </div>
@@ -1138,6 +1180,21 @@ export default function App() {
         onClose={() => setBillingModal({ open: false, reason: null })}
       />
 
+      {/* Career AI Coach Multi-Turn Drawer */}
+      <CareerChatDrawer
+        open={chatDrawerOpen}
+        messages={chatMessages}
+        activeDraft={activeDraft}
+        activeJob={activeJob}
+        autoFallback={atsSettings.autoFallback}
+        isAuthenticated={Boolean(currentUser)}
+        hasActiveAccess={trialStatus.hasActiveAccess}
+        onUpdateMessages={setChatMessages}
+        onRequireAuth={(reason) => setAuthPrompt({ open: true, reason })}
+        onRequireBilling={(reason) => setBillingModal({ open: true, reason })}
+        onClose={() => setChatDrawerOpen(false)}
+      />
+
       {/* Gmail Sign-In Gate Modal */}
       <AuthPromptModal
         open={authPrompt.open}
@@ -1156,9 +1213,9 @@ export default function App() {
         >
           <div className="w-full sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-xl">
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Trash2 className="w-4 h-4 text-red-700 dark:text-red-400 shrink-0" />
-                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
                   Delete Resume Draft?
                 </h2>
               </div>
@@ -1166,9 +1223,9 @@ export default function App() {
                 type="button"
                 onClick={() => setConfirmDeleteDraftId(null)}
                 aria-label="Cancel deletion"
-                className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
+                className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 shrink-0" />
               </button>
             </div>
             <div className="p-5 space-y-4">
@@ -1185,16 +1242,16 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setConfirmDeleteDraftId(null)}
-                  className="min-h-[40px] px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
+                  className="inline-flex items-center justify-center min-h-[40px] px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmDeleteDraft}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 py-2 text-xs font-semibold text-white bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-500 rounded-lg cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 text-xs font-semibold text-white bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-500 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Delete Draft</span>
                 </button>
               </div>

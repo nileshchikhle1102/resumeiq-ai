@@ -49,9 +49,9 @@ export const AuthPromptModal: React.FC<AuthPromptModalProps> = ({
     >
       <div className="w-full sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-xl">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Lock className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate">
               Sign in with Gmail Required
             </h2>
           </div>
@@ -59,9 +59,9 @@ export const AuthPromptModal: React.FC<AuthPromptModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close sign in prompt"
-            className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
+            className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 shrink-0" />
           </button>
         </div>
 
@@ -89,7 +89,7 @@ export const AuthPromptModal: React.FC<AuthPromptModalProps> = ({
             >
               {signingIn ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-700" aria-hidden="true" />
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-700 shrink-0" aria-hidden="true" />
                   <span>Connecting Gmail Account...</span>
                 </>
               ) : (

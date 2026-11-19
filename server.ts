@@ -132,6 +132,7 @@ async function generateWithRetryAndFallback(
     contents: string;
     systemInstruction: string;
     responseSchema: Record<string, unknown>;
+    useGoogleSearch?: boolean;
   }
 ) {
   const primaryModel =
@@ -140,9 +141,10 @@ async function generateWithRetryAndFallback(
   const modelsToTry = allowFallback ? [primaryModel, FALLBACK_MODEL] : [primaryModel];
 
   let lastError: unknown;
+  let trySearch = Boolean(options.useGoogleSearch);
 
   for (const modelName of modelsToTry) {
-    const maxAttempts = modelName === primaryModel ? 2 : 2;
+    const maxAttempts = 2;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const response = await ai.models.generateContent({
@@ -156,6 +158,7 @@ async function generateWithRetryAndFallback(
             },
             responseMimeType: 'application/json',
             responseSchema: options.responseSchema,
+            ...(trySearch ? { tools: [{ googleSearch: {} }] } : {}),
           },
         });
         return {
@@ -165,6 +168,17 @@ async function generateWithRetryAndFallback(
         };
       } catch (err) {
         lastError = err;
+        const rawMsg = err instanceof Error ? err.message : String(err);
+        // If Google Search tool + JSON schema combination is unsupported on a model variant, retry without search tool
+        if (
+          trySearch &&
+          (rawMsg.includes('400') ||
+            rawMsg.toLowerCase().includes('tool') ||
+            rawMsg.toLowerCase().includes('invalid_argument'))
+        ) {
+          trySearch = false;
+          continue;
+        }
         if (!isTransientHighDemandError(err)) {
           throw err;
         }
@@ -864,6 +878,285 @@ async function createServer() {
 
       const parsed = JSON.parse((response.text || '{}').trim());
       res.json(parsed);
+    } catch (err) {
+      const { status, message } = formatGeminiError(err);
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.post('/api/jobs/salary-estimate', async (req, res) => {
+    try {
+      const { jobTitle, location, company, jobDescription, settings } = req.body as {
+        jobTitle?: string;
+        location?: string;
+        company?: string;
+        jobDescription?: string;
+        settings?: { engine?: string; autoFallback?: boolean };
+      };
+
+      const cleanTitle = (jobTitle || '').trim();
+      if (!cleanTitle) {
+        res.status(400).json({ error: 'Job title is required to fetch salary benchmarks.' });
+        return;
+      }
+
+      const cleanLocation = (location || '').trim() || 'Remote / National Market';
+      const ai = getAiClient();
+
+      const prompt = [
+        'Provide an accurate, current market compensation range estimate for the following role and location.',
+        `Job Title: ${cleanTitle}`,
+        `Location / Work Mode: ${cleanLocation}`,
+        company ? `Target Company Context: ${company.trim()}` : '',
+        jobDescription
+          ? `Role Scope Excerpt:\n${jobDescription.trim().slice(0, 1800)}`
+          : '',
+        '',
+        'GUIDELINES:',
+        '1. Use the appropriate local currency for the target location (e.g., INR / ₹ for India cities like Bengaluru, Mumbai, Hyderabad, Delhi NCR, Pune; USD / $ for US cities or US Remote; GBP / £ for UK; EUR / € for Eurozone; SGD / S$ for Singapore; CAD / CA$ for Canada).',
+        '2. Express lowSalary (25th percentile), medianSalary (50th percentile), and highSalary (75th–90th percentile) as realistic numeric annual base compensation figures in that currency (e.g. 2400000 for ₹24 LPA, 165000 for $165k). Ensure lowSalary <= medianSalary <= highSalary.',
+        '3. Summarize expected bonus, equity/RSU, or variable pay context in totalCompNote.',
+        '4. Classify marketDemand as High, Moderate, Competitive, or Niche with a concise 1–2 sentence demandSummary.',
+        '5. List 3–4 concrete skills or experience factors (keyCompDrivers) that unlock top-quartile offers for this role and market.',
+        '6. Provide one practical, role-specific negotiationTip.',
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const { response, modelUsed } = await generateWithRetryAndFallback(ai, {
+        requestedEngine: settings?.engine,
+        autoFallback: settings?.autoFallback,
+        useGoogleSearch: true,
+        contents: prompt,
+        systemInstruction:
+          'You are a senior compensation analyst and technical recruiting market researcher. Provide grounded, realistic, location-adjusted salary bands without exaggeration.',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            currency: {
+              type: Type.STRING,
+              description: 'ISO 4217 currency code such as INR, USD, GBP, EUR, CAD, SGD.',
+            },
+            currencySymbol: {
+              type: Type.STRING,
+              description: 'Currency symbol such as ₹, $, £, €.',
+            },
+            payPeriod: {
+              type: Type.STRING,
+              enum: ['annual', 'monthly', 'hourly'],
+            },
+            lowSalary: {
+              type: Type.INTEGER,
+              description: '25th percentile annual base salary as a whole number.',
+            },
+            medianSalary: {
+              type: Type.INTEGER,
+              description: '50th percentile (median) annual base salary as a whole number.',
+            },
+            highSalary: {
+              type: Type.INTEGER,
+              description: '75th-90th percentile annual base salary as a whole number.',
+            },
+            totalCompNote: {
+              type: Type.STRING,
+              description: 'Concise summary of typical bonus, stock/RSU, or variable pay.',
+            },
+            marketDemand: {
+              type: Type.STRING,
+              enum: ['High', 'Moderate', 'Competitive', 'Niche'],
+            },
+            demandSummary: {
+              type: Type.STRING,
+              description: '1-2 sentence overview of hiring demand and supply for this location.',
+            },
+            keyCompDrivers: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+            negotiationTip: {
+              type: Type.STRING,
+            },
+          },
+          required: [
+            'currency',
+            'currencySymbol',
+            'payPeriod',
+            'lowSalary',
+            'medianSalary',
+            'highSalary',
+            'totalCompNote',
+            'marketDemand',
+            'demandSummary',
+            'keyCompDrivers',
+            'negotiationTip',
+          ],
+        },
+      });
+
+      const parsed = JSON.parse((response.text || '{}').trim()) as Record<string, unknown>;
+
+      // Extract grounded search citations if returned by Gemini Search Grounding
+      const rawChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      const seenUrls = new Set<string>();
+      const sources: Array<{ title: string; url: string }> = [];
+      if (Array.isArray(rawChunks)) {
+        for (const chunk of rawChunks) {
+          const web = (chunk as { web?: { uri?: string; title?: string } })?.web;
+          if (web?.uri && /^https?:\/\//i.test(web.uri) && !seenUrls.has(web.uri)) {
+            seenUrls.add(web.uri);
+            sources.push({
+              title: (web.title || web.uri).slice(0, 100),
+              url: web.uri,
+            });
+            if (sources.length >= 5) break;
+          }
+        }
+      }
+
+      res.json({
+        jobTitle: cleanTitle,
+        location: cleanLocation,
+        currency: String(parsed.currency || 'USD').toUpperCase(),
+        currencySymbol: String(parsed.currencySymbol || '$'),
+        payPeriod:
+          parsed.payPeriod === 'monthly' || parsed.payPeriod === 'hourly'
+            ? parsed.payPeriod
+            : 'annual',
+        lowSalary: Number(parsed.lowSalary) || 0,
+        medianSalary: Number(parsed.medianSalary) || 0,
+        highSalary: Number(parsed.highSalary) || 0,
+        totalCompNote: String(parsed.totalCompNote || ''),
+        marketDemand:
+          parsed.marketDemand === 'High' ||
+          parsed.marketDemand === 'Competitive' ||
+          parsed.marketDemand === 'Niche'
+            ? parsed.marketDemand
+            : 'Moderate',
+        demandSummary: String(parsed.demandSummary || ''),
+        keyCompDrivers: Array.isArray(parsed.keyCompDrivers)
+          ? parsed.keyCompDrivers.map((d) => String(d)).slice(0, 5)
+          : [],
+        negotiationTip: String(parsed.negotiationTip || ''),
+        sources,
+        fetchedAt: new Date().toISOString(),
+        engineUsed: sources.length > 0 ? `${modelUsed} · Web Grounded` : modelUsed,
+      });
+    } catch (err) {
+      const { status, message } = formatGeminiError(err);
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.post('/api/chat/message', async (req, res) => {
+    try {
+      const {
+        message,
+        history,
+        persona,
+        model,
+        autoFallback,
+        resume,
+        jobTitle,
+        company,
+        location,
+        jobDescription,
+      } = req.body as {
+        message?: string;
+        history?: Array<{ role?: string; text?: string }>;
+        persona?: string;
+        model?: string;
+        autoFallback?: boolean;
+        resume?: ResumePayload | null;
+        jobTitle?: string;
+        company?: string;
+        location?: string;
+        jobDescription?: string;
+      };
+
+      const cleanMessage = (message || '').trim();
+      if (!cleanMessage) {
+        res.status(400).json({ error: 'Message text is required.' });
+        return;
+      }
+
+      const ai = getAiClient();
+
+      const roleDirective =
+        persona === 'interview_coach'
+          ? 'You are ResumeIQ Interview Coach — a demanding yet supportive hiring manager and technical/behavioral interviewer. Ask one targeted interview question at a time or evaluate the candidate’s answer using the STAR framework, referencing their real resume projects and experience without inventing fake credentials.'
+          : persona === 'salary_negotiator'
+          ? 'You are ResumeIQ Salary & Compensation Advisor — a sharp career negotiation strategist. Help the candidate benchmark total compensation, frame counter-offers, handle recruiter anchoring, and tie compensation asks to verifiable impact from their resume.'
+          : 'You are ResumeIQ ATS Strategist — a senior technical recruiter and resume architect. Give concrete, honest, hallucination-free advice to tighten resume bullets, surface missing job keywords, quantify outcomes, and improve ATS readability.';
+
+      const contextBlocks: string[] = [
+        roleDirective,
+        'Always remain grounded in the candidate’s actual resume facts. Never fabricate employers, metrics, or degrees. Keep responses crisp, structured, and actionable.',
+      ];
+
+      if (resume) {
+        contextBlocks.push('', 'ACTIVE CANDIDATE RESUME CONTEXT:', serializeResumeForPrompt(resume));
+      }
+      if (jobTitle || jobDescription) {
+        contextBlocks.push(
+          '',
+          `ACTIVE TARGET JOB: ${jobTitle || 'Role'} at ${company || 'Target Company'}${location ? ` (${location})` : ''}`,
+          jobDescription ? `JOB DESCRIPTION EXCERPT:\n${jobDescription.slice(0, 2500)}` : ''
+        );
+      }
+
+      const systemInstruction = contextBlocks.filter((line) => line !== undefined).join('\n');
+
+      const normalizedHistory = (Array.isArray(history) ? history : [])
+        .slice(-24)
+        .filter((item) => item && (item.role === 'user' || item.role === 'model') && item.text?.trim())
+        .map((item) => ({
+          role: item.role as 'user' | 'model',
+          parts: [{ text: String(item.text).trim() }],
+        }));
+
+      const requestedModel = model === FALLBACK_MODEL ? FALLBACK_MODEL : PRIMARY_MODEL;
+      const allowFallback = autoFallback !== false && requestedModel !== FALLBACK_MODEL;
+      const modelsToTry = allowFallback ? [requestedModel, FALLBACK_MODEL] : [requestedModel];
+
+      let lastError: unknown;
+      for (const modelName of modelsToTry) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const chat = ai.chats.create({
+              model: modelName,
+              history: normalizedHistory,
+              config: {
+                systemInstruction,
+                thinkingConfig: {
+                  thinkingLevel:
+                    modelName === FALLBACK_MODEL ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW,
+                },
+              },
+            });
+            const response = await chat.sendMessage({ message: cleanMessage });
+            const replyText = (response.text || '').trim();
+            if (!replyText) {
+              throw new Error('Model returned an empty response.');
+            }
+            res.json({
+              reply: replyText,
+              modelUsed:
+                modelName === FALLBACK_MODEL ? 'Gemini 3.1 Flash Lite' : 'Gemini 4 Hydrogen',
+            });
+            return;
+          } catch (err) {
+            lastError = err;
+            if (!isTransientHighDemandError(err)) {
+              throw err;
+            }
+            if (attempt < 2) {
+              await sleep(650 * attempt + Math.floor(Math.random() * 250));
+            }
+          }
+        }
+      }
+
+      throw lastError;
     } catch (err) {
       const { status, message } = formatGeminiError(err);
       res.status(status).json({ error: message });

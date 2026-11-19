@@ -127,6 +127,8 @@ A responsive full-stack web and mobile resume builder that pairs a live multi-te
 - `POST /api/ats/analyze` — Runs structured ATS analysis using the configured Gemini model (with optional automatic `503` retry/failover).
 - `POST /api/ats/rewrite-bullet` — Rewrites a single experience bullet point with action verbs, metrics, and target JD keywords.
 - `POST /api/ats/generate-summary` — Tailors the professional summary to the active target job description.
+- `POST /api/jobs/salary-estimate` — Fetches localized market salary range estimates (25th / 50th / 75th+ percentile), demand level, compensation drivers, and grounded references for a job title and location.
+- `POST /api/chat/message` — Multi-turn Gemini Career AI Coach (`ai.chats.create`) supporting role personas (`ATS Strategist`, `Interview Coach`, `Salary Advisor`), conversation history, and optional active draft/job context.
 - `GET /api/billing/status` — Returns `{ ok, stripeConfigured, trialDays, plans }` for the trial/subscription modal.
 - `POST /api/billing/create-checkout-session` — Creates a hosted Stripe Checkout subscription session (`₹149/mo` or `₹1,199/yr`).
 - `POST /api/billing/verify-session` — Verifies a completed Stripe Checkout session and returns a signed receipt token for Firestore persistence.

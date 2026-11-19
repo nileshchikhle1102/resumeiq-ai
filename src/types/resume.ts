@@ -198,3 +198,40 @@ export interface TrialStatusInfo {
   hasActiveAccess: boolean;
 }
 
+export interface SalarySourceLink {
+  title: string;
+  url: string;
+}
+
+export interface SalaryEstimateResult {
+  jobTitle: string;
+  location: string;
+  currency: string;
+  currencySymbol: string;
+  payPeriod: 'annual' | 'monthly' | 'hourly';
+  lowSalary: number;
+  medianSalary: number;
+  highSalary: number;
+  totalCompNote: string;
+  marketDemand: 'High' | 'Moderate' | 'Competitive' | 'Niche';
+  demandSummary: string;
+  keyCompDrivers: string[];
+  negotiationTip: string;
+  sources: SalarySourceLink[];
+  fetchedAt: string;
+  engineUsed: string;
+}
+
+export type ChatModelId = 'gemini-4-hydrogen' | 'gemini-3.1-flash-lite';
+
+export type ChatRolePersona = 'ats_strategist' | 'interview_coach' | 'salary_negotiator';
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  createdAt: string;
+  modelUsed?: string;
+}
+
+
