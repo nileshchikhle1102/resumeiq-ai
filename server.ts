@@ -348,18 +348,21 @@ async function createServer() {
       ok: true,
       stripeConfigured: isStripeConfigured(),
       trialDays: 3,
+      currency: 'INR',
       plans: [
         {
           id: 'monthly',
           name: 'Monthly Pro',
-          priceCents: 1200,
+          priceCents: 14900,
+          currency: 'inr',
           interval: 'month',
           priceIdConfigured: Boolean(process.env.STRIPE_PRICE_MONTHLY?.trim()),
         },
         {
           id: 'annual',
           name: 'Annual Pro',
-          priceCents: 8900,
+          priceCents: 119900,
+          currency: 'inr',
           interval: 'year',
           priceIdConfigured: Boolean(process.env.STRIPE_PRICE_ANNUAL?.trim()),
         },
@@ -422,7 +425,7 @@ async function createServer() {
         params.set('line_items[0][price]', configuredPriceId);
         params.set('line_items[0][quantity]', '1');
       } else {
-        params.set('line_items[0][price_data][currency]', 'usd');
+        params.set('line_items[0][price_data][currency]', 'inr');
         params.set(
           'line_items[0][price_data][product_data][name]',
           plan === 'annual' ? 'ResumeIQ Pro — Annual Plan' : 'ResumeIQ Pro — Monthly Plan'
@@ -433,7 +436,7 @@ async function createServer() {
         );
         params.set(
           'line_items[0][price_data][unit_amount]',
-          plan === 'annual' ? '8900' : '1200'
+          plan === 'annual' ? '119900' : '14900'
         );
         params.set(
           'line_items[0][price_data][recurring][interval]',

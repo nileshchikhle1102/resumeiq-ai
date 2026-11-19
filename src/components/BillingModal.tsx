@@ -36,17 +36,17 @@ const PLAN_OPTIONS: Array<{
   {
     id: 'monthly',
     name: 'Monthly Pro',
-    price: '$12',
+    price: '₹149',
     period: '/ month',
     note: 'Flexible month-to-month access while actively interviewing.',
   },
   {
     id: 'annual',
     name: 'Annual Pro',
-    price: '$89',
+    price: '₹1,199',
     period: '/ year',
     note: 'Best value for ongoing career tracking & role tailoring.',
-    savingsLabel: 'Save 38% ($7.42/mo)',
+    savingsLabel: 'Save 33% (~₹100/mo)',
   },
 ];
 
@@ -346,8 +346,8 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {gatewayStatus.stripeConfigured === false
-                    ? 'Add STRIPE_SECRET_KEY in Settings > Secrets to enable live Card, Apple Pay & Google Pay checkouts.'
-                    : 'Encrypted hosted checkout supporting Credit/Debit Cards, Apple Pay & Google Pay.'}
+                    ? 'Add STRIPE_SECRET_KEY in Settings > Secrets to enable live Card, UPI, Apple Pay & Google Pay checkouts.'
+                    : 'Encrypted hosted checkout supporting Credit/Debit Cards, UPI, Apple Pay & Google Pay.'}
                 </p>
               </div>
             </div>
@@ -402,8 +402,8 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                   <CreditCard className="w-3.5 h-3.5" />
                   <span>
                     {selectedPlan === 'annual'
-                      ? 'Subscribe with Stripe · $89/yr'
-                      : 'Subscribe with Stripe · $12/mo'}
+                      ? 'Subscribe with Stripe · ₹1,199/yr'
+                      : 'Subscribe with Stripe · ₹149/mo'}
                   </span>
                 </>
               )}

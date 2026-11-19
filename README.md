@@ -9,7 +9,7 @@ A responsive full-stack web and mobile resume builder that pairs a live multi-te
 - **Gmail Authentication, 3-Day Free Trial & Stripe Pro Billing**:
   - Dedicated **Login Page** with **Continue with Gmail (Google)** (`signInWithPopup`) and an optional **Local Browser Mode** fallback.
   - Real-time cloud synchronization per authenticated user (`users/{uid}/drafts`, `jobs`, `reports`, `settings`, `billing`) backed by hardened `firestore.rules`.
-  - **72-Hour Free Trial + Subscriptions**: Every Gmail account automatically receives an unforgeable 3-day free trial measured from its server-side `createdAt` timestamp. After the trial expires, AI ATS scans, AI rewrites, and PDF/JSON exports prompt for **ResumeIQ Pro** (`$12/mo` or `$89/yr`) via hosted **Stripe Checkout** (Cards, Apple Pay, Google Pay).
+  - **72-Hour Free Trial + Subscriptions**: Every Gmail account automatically receives an unforgeable 3-day free trial measured from its server-side `createdAt` timestamp. After the trial expires, AI ATS scans, AI rewrites, and PDF/JSON exports prompt for **ResumeIQ Pro** (`₹149/mo` or `₹1,199/yr`) via hosted **Stripe Checkout** (Cards, UPI, Apple Pay, Google Pay).
 
 - **Structured Resume Builder & Live Document Preview**:
   - Edit Contact & Header, Professional Summary, Work Experience (bullet-by-bullet), Skills & Competencies (with per-skill **`Beginner` | `Intermediate` | `Expert`** proficiency levels), Projects, Education, and Certifications.
@@ -128,6 +128,6 @@ A responsive full-stack web and mobile resume builder that pairs a live multi-te
 - `POST /api/ats/rewrite-bullet` — Rewrites a single experience bullet point with action verbs, metrics, and target JD keywords.
 - `POST /api/ats/generate-summary` — Tailors the professional summary to the active target job description.
 - `GET /api/billing/status` — Returns `{ ok, stripeConfigured, trialDays, plans }` for the trial/subscription modal.
-- `POST /api/billing/create-checkout-session` — Creates a hosted Stripe Checkout subscription session (`$12/mo` or `$89/yr`).
+- `POST /api/billing/create-checkout-session` — Creates a hosted Stripe Checkout subscription session (`₹149/mo` or `₹1,199/yr`).
 - `POST /api/billing/verify-session` — Verifies a completed Stripe Checkout session and returns a signed receipt token for Firestore persistence.
 
