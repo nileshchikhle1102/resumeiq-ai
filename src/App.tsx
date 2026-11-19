@@ -15,7 +15,12 @@ import { TemplatesAndDraftsView } from './components/TemplatesAndDraftsView';
 import { TopBar } from './components/TopBar';
 import { WorkspaceToolbar } from './components/WorkspaceToolbar';
 import { createEmptyDraft, createId } from './data/defaultData';
-import { auth, signInWithGmail, signOutAccount } from './firebase';
+import {
+  auth,
+  signInWithGmail,
+  signInWithGoogleDirect,
+  signOutAccount,
+} from './firebase';
 import {
   deleteDraftFromFirestore,
   deleteJobFromFirestore,
@@ -354,8 +359,7 @@ export default function App() {
     setToastMessage(msg);
   };
 
-  const handleSignInWithGmail = async () => {
-    const user = await signInWithGmail();
+  const completeSignIn = (user: User) => {
     currentUserRef.current = user;
     setLocalGuestMode(false);
     const pending = authPrompt.pendingAction;
@@ -364,6 +368,16 @@ export default function App() {
     if (pending) {
       window.setTimeout(() => pending(), 150);
     }
+  };
+
+  const handleSignInWithGmail = async () => {
+    const user = await signInWithGmail();
+    completeSignIn(user);
+  };
+
+  const handleSignInWithGoogleDirect = async () => {
+    const user = await signInWithGoogleDirect();
+    completeSignIn(user);
   };
 
   const requireAuth = (reason: string, pendingAction?: () => void): boolean => {
@@ -770,6 +784,7 @@ export default function App() {
         theme={theme}
         onToggleTheme={handleToggleTheme}
         onSignInWithGmail={handleSignInWithGmail}
+        onSignInWithGoogleDirect={handleSignInWithGoogleDirect}
         onContinueLocal={() => {
           setLocalGuestMode(true);
           notify('Working in Local Browser Mode.');
@@ -1146,6 +1161,7 @@ export default function App() {
         open={authPrompt.open}
         reason={authPrompt.reason}
         onSignInWithGmail={handleSignInWithGmail}
+        onSignInWithGoogleDirect={handleSignInWithGoogleDirect}
         onClose={() => setAuthPrompt({ open: false, reason: '' })}
       />
 

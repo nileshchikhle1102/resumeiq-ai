@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { AlertCircle, Loader2, Lock, X } from 'lucide-react';
+import { formatAuthError } from '../firebase';
 
 interface AuthPromptModalProps {
   open: boolean;
   reason: string;
   onSignInWithGmail: () => Promise<void>;
+  onSignInWithGoogleDirect: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -12,31 +14,36 @@ export const AuthPromptModal: React.FC<AuthPromptModalProps> = ({
   open,
   reason,
   onSignInWithGmail,
+  onSignInWithGoogleDirect,
   onClose,
 }) => {
-  const [signingIn, setSigningIn] = useState(false);
+  const [signingInMode, setSigningInMode] = useState<'popup' | 'direct' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const signingIn = signingInMode !== null;
 
   if (!open) return null;
 
   const handleSignIn = async () => {
-    setSigningIn(true);
+    setSigningInMode('popup');
     setError(null);
     try {
       await onSignInWithGmail();
     } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Unable to sign in with Google.';
-      if (raw.includes('auth/popup-closed-by-user')) {
-        setError('Sign-in popup was closed before completing Gmail authentication.');
-      } else if (raw.includes('auth/popup-blocked')) {
-        setError('Sign-in popup was blocked by your browser. Allow popups and try again.');
-      } else if (raw.includes('auth/unauthorized-domain')) {
-        setError('This preview domain is not yet authorized in Firebase Authentication settings.');
-      } else {
-        setError(raw);
-      }
+      setError(formatAuthError(err));
     } finally {
-      setSigningIn(false);
+      setSigningInMode(null);
+    }
+  };
+
+  const handleDirectSignIn = async () => {
+    setSigningInMode('direct');
+    setError(null);
+    try {
+      await onSignInWithGoogleDirect();
+    } catch (err) {
+      setError(formatAuthError(err));
+    } finally {
+      setSigningInMode(null);
     }
   };
 
@@ -87,7 +94,7 @@ export const AuthPromptModal: React.FC<AuthPromptModalProps> = ({
               disabled={signingIn}
               className="w-full min-h-[46px] px-4 py-2.5 inline-flex items-center justify-center gap-3 text-sm font-semibold text-slate-900 dark:text-slate-950 bg-white dark:bg-slate-100 hover:bg-slate-50 dark:hover:bg-white border border-slate-300 dark:border-slate-200 rounded-xl shadow-xs transition-colors disabled:opacity-60 cursor-pointer"
             >
-              {signingIn ? (
+              {signingInMode === 'popup' ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-blue-700 shrink-0" aria-hidden="true" />
                   <span>Connecting Gmail Account...</span>
@@ -114,6 +121,22 @@ export const AuthPromptModal: React.FC<AuthPromptModalProps> = ({
                   </svg>
                   <span>Continue with Gmail (Google)</span>
                 </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDirectSignIn}
+              disabled={signingIn}
+              className="w-full min-h-[38px] px-4 py-2 inline-flex items-center justify-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100/70 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/80 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
+            >
+              {signingInMode === 'direct' ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
+                  <span>Completing Direct Google Sign-In...</span>
+                </>
+              ) : (
+                <span>Direct Google Sign-In (Bypass Storage Partitioning)</span>
               )}
             </button>
 

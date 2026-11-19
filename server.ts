@@ -400,6 +400,10 @@ function serializeResumeForPrompt(resume: ResumePayload): string {
 
 async function createServer() {
   const app = express();
+  app.use((_req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    next();
+  });
   app.use(express.json({ limit: '2mb' }));
 
   app.get('/api/health', (_req, res) => {
