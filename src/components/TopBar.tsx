@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer } from 'lucide-react';
 import { WorkspaceTab } from '../types/resume';
+import { BrandLogo } from './BrandLogo';
 
 interface TopBarProps {
   activeTab: WorkspaceTab;
@@ -30,9 +31,9 @@ export const TopBar: React.FC<TopBarProps> = ({
             e.preventDefault();
             onSelectTab('builder');
           }}
-          className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+          className="whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
         >
-          ResumeIQ
+          <BrandLogo size="md" />
         </a>
 
         <nav className="flex items-center gap-7" aria-label="Workspace sections">
@@ -75,9 +76,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {/* Mobile Compact Header (44px height to stay strictly within 15% mobile sticky cap) */}
       <div className="flex lg:hidden items-center justify-between gap-4 px-4 h-11">
-        <span className="font-display text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0">
-          ResumeIQ
-        </span>
+        <BrandLogo size="sm" />
         <button
           type="button"
           onClick={onExportPdf}

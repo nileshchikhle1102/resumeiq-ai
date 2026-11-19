@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="rLoopGrad" x1="12" y1="12" x2="52" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="50%" stop-color="#25A3FF" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+    <linearGradient id="rLegGrad" x1="33" y1="36" x2="49" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="48%" stop-color="#22A7FF" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+    <radialGradient id="sparkleGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#67E8F9" stop-opacity="0.72" />
+      <stop offset="55%" stop-color="#38BDF8" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="pillBorderGrad" x1="13" y1="47" x2="31" y2="57" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+    <filter id="pillGlow" x="-25%" y="-40%" width="150%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.6" flood-color="#38BDF8" flood-opacity="0.55" />
+    </filter>
+  </defs>
+
+  <!-- Center radial glow behind sparkle -->
+  <circle cx="31.5" cy="25.5" r="10.5" fill="url(#sparkleGlow)" />
+
+  <!-- Open R Monogram Loop -->
+  <path
+    d="M15 13.5H36.5C44.5 13.5 50 18.8 50 26C50 33.2 44.5 38.5 36.5 38.5H15"
+    stroke="url(#rLoopGrad)"
+    stroke-width="5.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- R Diagonal Leg -->
+  <path
+    d="M34 36L48.5 51.5"
+    stroke="url(#rLegGrad)"
+    stroke-width="5.2"
+    stroke-linecap="round"
+  />
+
+  <!-- 4-Point AI Sparkle inside R -->
+  <path
+    d="M31.5 21.2L32.7 24.3L35.8 25.5L32.7 26.7L31.5 29.8L30.3 26.7L27.2 25.5L30.3 24.3L31.5 21.2Z"
+    fill="#FFFFFF"
+  />
+  <circle cx="31.5" cy="25.5" r="1.45" fill="#1FA7F7" />
+
+  <!-- Bottom-left dark AI pill badge -->
+  <g filter="url(#pillGlow)">
+    <rect
+      x="13.5"
+      y="47"
+      width="17"
+      height="9.2"
+      rx="4.6"
+      fill="#0B1120"
+      stroke="url(#pillBorderGrad)"
+      stroke-width="1.15"
+    />
+    <text
+      x="22"
+      y="53.6"
+      text-anchor="middle"
+      font-family="Plus Jakarta Sans, Inter, system-ui, sans-serif"
+      font-size="5.8"
+      font-weight="700"
+      letter-spacing="0.4"
+      fill="#38BDF8"
+    >
+      AI
+    </text>
+  </g>
+</svg>

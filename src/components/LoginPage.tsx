@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
-  FileText,
   Loader2,
   Moon,
   ScanSearch,
@@ -10,6 +9,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { StudioTheme } from '../utils/storage';
+import { BrandLogo } from './BrandLogo';
 
 interface LoginPageProps {
   theme: StudioTheme;
@@ -54,11 +54,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       {/* Minimal Top Bar */}
       <header className="w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md">
         <div className="max-w-[1120px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <FileText className="w-5 h-5 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
-            <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap">
-              ResumeIQ
-            </span>
+          <div className="flex items-center min-w-0">
+            <BrandLogo size="md" />
           </div>
 
           <button
