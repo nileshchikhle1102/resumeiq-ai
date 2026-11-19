@@ -18,57 +18,28 @@ function isGeminiConfigured(): boolean {
   return Boolean(apiKey && apiKey !== 'MY_GEMINI_API_KEY');
 }
 
-function getStripeSecretKey(): string | null {
-  const key = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!key || key === 'MY_STRIPE_SECRET_KEY') {
-    return null;
-  }
-  return key;
+function isClaudeConfigured(): boolean {
+  const key = process.env.ANTHROPIC_API_KEY?.trim();
+  return Boolean(key && key !== 'MY_ANTHROPIC_API_KEY');
 }
 
-function isStripeConfigured(): boolean {
-  return Boolean(getStripeSecretKey());
+function isOpenAiConfigured(): boolean {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  return Boolean(key && key !== 'MY_OPENAI_API_KEY');
 }
 
 function signBillingReceipt(payload: {
   uid: string;
   plan: string;
-  sessionId: string;
+  paymentReference: string;
   expiresAt: string;
 }): string {
   const secret =
-    process.env.STRIPE_SECRET_KEY ||
+    process.env.BILLING_RECEIPT_SECRET ||
     process.env.GEMINI_API_KEY ||
     'resumeiq-billing-receipt-secret';
-  const message = `${payload.uid}|${payload.plan}|${payload.sessionId}|${payload.expiresAt}`;
+  const message = `${payload.uid}|${payload.plan}|${payload.paymentReference}|${payload.expiresAt}`;
   return crypto.createHmac('sha256', secret).update(message).digest('hex');
-}
-
-function resolveAppOrigin(req: express.Request, clientReturnUrl?: string): string {
-  if (clientReturnUrl) {
-    try {
-      const parsed = new URL(clientReturnUrl);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        return `${parsed.origin}${parsed.pathname}`.replace(/\/$/, '');
-      }
-    } catch {
-      // Fallback to server env / request host
-    }
-  }
-  const envUrl = process.env.APP_URL?.trim();
-  if (envUrl && envUrl !== 'MY_APP_URL') {
-    try {
-      return new URL(envUrl).origin;
-    } catch {
-      // Ignore malformed APP_URL
-    }
-  }
-  const protoHeader = req.headers['x-forwarded-proto'];
-  const proto = Array.isArray(protoHeader)
-    ? protoHeader[0]
-    : protoHeader?.split(',')[0] || req.protocol || 'http';
-  const host = req.headers['x-forwarded-host'] || req.get('host') || `localhost:${PORT}`;
-  return `${proto}://${host}`;
 }
 
 function getAiClient(): GoogleGenAI {
@@ -191,6 +162,95 @@ async function generateWithRetryAndFallback(
   }
 
   throw lastError;
+}
+
+function extractJsonObject(rawText: string): Record<string, unknown> {
+  const trimmed = rawText.trim();
+  try {
+    return JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    const start = trimmed.indexOf('{');
+    const end = trimmed.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1)) as Record<string, unknown>;
+    }
+    throw new Error('AI provider returned an invalid JSON payload.');
+  }
+}
+
+async function runExternalStructuredAts(options: {
+  engine: 'anthropic-claude' | 'openai-gpt';
+  systemInstruction: string;
+  prompt: string;
+  jsonSchemaDescription: string;
+}): Promise<{ parsed: Record<string, unknown>; modelUsed: string }> {
+  const fullSystem = `${options.systemInstruction}\n\nReturn ONLY valid JSON matching this structure (no markdown fences, no commentary):\n${options.jsonSchemaDescription}`;
+
+  if (options.engine === 'anthropic-claude') {
+    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+    if (!apiKey || apiKey === 'MY_ANTHROPIC_API_KEY') {
+      throw new Error(
+        'ANTHROPIC_API_KEY is not configured in server Secrets. Configure it in Settings > Secrets or connect Google Gemini / Local Engine.'
+      );
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-latest',
+        max_tokens: 3000,
+        system: fullSystem,
+        messages: [{ role: 'user', content: options.prompt }],
+      }),
+    });
+    const data = (await res.json()) as {
+      content?: Array<{ type?: string; text?: string }>;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      throw new Error(data?.error?.message || `Anthropic Claude API error (${res.status}).`);
+    }
+    const text = (data.content || [])
+      .filter((c) => c.type === 'text' && c.text)
+      .map((c) => c.text)
+      .join('\n');
+    return { parsed: extractJsonObject(text), modelUsed: 'Anthropic Claude' };
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey || apiKey === 'MY_OPENAI_API_KEY') {
+    throw new Error(
+      'OPENAI_API_KEY is not configured in server Secrets. Configure it in Settings > Secrets or connect Google Gemini / Local Engine.'
+    );
+  }
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: fullSystem },
+        { role: 'user', content: options.prompt },
+      ],
+    }),
+  });
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `OpenAI API error (${res.status}).`);
+  }
+  const text = data.choices?.[0]?.message?.content || '{}';
+  return { parsed: extractJsonObject(text), modelUsed: 'OpenAI GPT-4o mini' };
 }
 
 function formatGeminiError(err: unknown): { status: number; message: string } {
@@ -350,9 +410,16 @@ async function createServer() {
     res.json({
       ok: true,
       geminiConfigured: isGeminiConfigured(),
+      providers: {
+        gemini: isGeminiConfigured(),
+        claude: isClaudeConfigured(),
+        openai: isOpenAiConfigured(),
+      },
       availableModels: [
-        { id: PRIMARY_MODEL, label: 'Gemini 4 Hydrogen' },
-        { id: FALLBACK_MODEL, label: 'Gemini 3.1 Flash Lite' },
+        { id: PRIMARY_MODEL, label: 'Gemini 4 Hydrogen', provider: 'gemini' },
+        { id: FALLBACK_MODEL, label: 'Gemini 3.1 Flash Lite', provider: 'gemini' },
+        { id: 'anthropic-claude', label: 'Anthropic Claude', provider: 'claude' },
+        { id: 'openai-gpt', label: 'OpenAI GPT-4o mini', provider: 'openai' },
       ],
     });
   });
@@ -360,7 +427,7 @@ async function createServer() {
   app.get('/api/billing/status', (_req, res) => {
     res.json({
       ok: true,
-      stripeConfigured: isStripeConfigured(),
+      subscriptionMode: 'direct',
       trialDays: 3,
       currency: 'INR',
       plans: [
@@ -370,7 +437,6 @@ async function createServer() {
           priceCents: 14900,
           currency: 'inr',
           interval: 'month',
-          priceIdConfigured: Boolean(process.env.STRIPE_PRICE_MONTHLY?.trim()),
         },
         {
           id: 'annual',
@@ -378,19 +444,18 @@ async function createServer() {
           priceCents: 119900,
           currency: 'inr',
           interval: 'year',
-          priceIdConfigured: Boolean(process.env.STRIPE_PRICE_ANNUAL?.trim()),
         },
       ],
     });
   });
 
-  app.post('/api/billing/create-checkout-session', async (req, res) => {
+  app.post('/api/billing/subscribe', (req, res) => {
     try {
-      const { plan, uid, email, returnUrl } = req.body as {
+      const { plan, uid, paymentMethod, paymentDetail } = req.body as {
         plan?: string;
         uid?: string;
-        email?: string;
-        returnUrl?: string;
+        paymentMethod?: string;
+        paymentDetail?: string;
       };
 
       if (plan !== 'monthly' && plan !== 'annual') {
@@ -399,166 +464,34 @@ async function createServer() {
       }
 
       if (!uid || !uid.trim()) {
-        res.status(400).json({ error: 'Authenticated user ID is required to start checkout.' });
+        res.status(400).json({ error: 'Authenticated user ID is required to activate a subscription.' });
         return;
       }
 
-      const stripeKey = getStripeSecretKey();
-      if (!stripeKey) {
-        res.status(503).json({
-          stripeConfigured: false,
-          error:
-            'Stripe payment gateway is not configured yet. Add STRIPE_SECRET_KEY in Settings > Secrets (or .env) to accept live Card, Apple Pay, and Google Pay subscriptions.',
-        });
+      const method =
+        paymentMethod === 'card' || paymentMethod === 'netbanking' ? paymentMethod : 'upi';
+
+      const detail = (paymentDetail || '').trim();
+      if (method === 'upi' && (!detail || !/^[^\s@]+@[^\s@]{2,}$/.test(detail))) {
+        res.status(400).json({ error: 'Please enter a valid UPI ID (e.g. name@okaxis).' });
+        return;
+      }
+      if (method === 'card' && detail.length < 4) {
+        res.status(400).json({ error: 'Please enter the cardholder name or last 4 card digits.' });
+        return;
+      }
+      if (method === 'netbanking' && detail.length < 2) {
+        res.status(400).json({ error: 'Please select your bank to continue.' });
         return;
       }
 
-      const baseOrigin = resolveAppOrigin(req, returnUrl);
-      const cleanReturnBase = baseOrigin.split('?')[0].replace(/\/$/, '');
-      const successUrl = `${cleanReturnBase}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${cleanReturnBase}/?checkout=cancelled`;
-
-      const configuredPriceId =
-        plan === 'annual'
-          ? process.env.STRIPE_PRICE_ANNUAL?.trim()
-          : process.env.STRIPE_PRICE_MONTHLY?.trim();
-
-      const params = new URLSearchParams();
-      params.set('mode', 'subscription');
-      params.set('success_url', successUrl);
-      params.set('cancel_url', cancelUrl);
-      params.set('client_reference_id', uid.trim());
-      params.set('metadata[uid]', uid.trim());
-      params.set('metadata[plan]', plan);
-      params.set('allow_promotion_codes', 'true');
-      if (email && email.includes('@')) {
-        params.set('customer_email', email.trim());
-      }
-
-      if (configuredPriceId) {
-        params.set('line_items[0][price]', configuredPriceId);
-        params.set('line_items[0][quantity]', '1');
-      } else {
-        params.set('line_items[0][price_data][currency]', 'inr');
-        params.set(
-          'line_items[0][price_data][product_data][name]',
-          plan === 'annual' ? 'ResumeIQ Pro — Annual Plan' : 'ResumeIQ Pro — Monthly Plan'
-        );
-        params.set(
-          'line_items[0][price_data][product_data][description]',
-          'Unlimited Gemini ATS compatibility scans, AI bullet & summary rewrites, and print-ready PDF/JSON exports.'
-        );
-        params.set(
-          'line_items[0][price_data][unit_amount]',
-          plan === 'annual' ? '119900' : '14900'
-        );
-        params.set(
-          'line_items[0][price_data][recurring][interval]',
-          plan === 'annual' ? 'year' : 'month'
-        );
-        params.set('line_items[0][quantity]', '1');
-      }
-
-      const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${stripeKey}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString(),
-      });
-
-      const stripeData = (await stripeRes.json()) as {
-        id?: string;
-        url?: string;
-        error?: { message?: string };
-      };
-
-      if (!stripeRes.ok || !stripeData.url) {
-        res.status(stripeRes.status >= 400 ? stripeRes.status : 500).json({
-          error: stripeData?.error?.message || 'Unable to create Stripe Checkout session.',
-        });
-        return;
-      }
-
-      res.json({
-        ok: true,
-        sessionId: stripeData.id,
-        url: stripeData.url,
-      });
-    } catch (err) {
-      res.status(500).json({
-        error: err instanceof Error ? err.message : 'Failed to initialize Stripe Checkout.',
-      });
-    }
-  });
-
-  app.post('/api/billing/verify-session', async (req, res) => {
-    try {
-      const { sessionId, uid } = req.body as { sessionId?: string; uid?: string };
-      if (!sessionId || !uid) {
-        res.status(400).json({ error: 'sessionId and uid are required.' });
-        return;
-      }
-
-      const stripeKey = getStripeSecretKey();
-      if (!stripeKey) {
-        res.status(503).json({
-          stripeConfigured: false,
-          error: 'STRIPE_SECRET_KEY is not configured on the server.',
-        });
-        return;
-      }
-
-      const stripeRes = await fetch(
-        `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId.trim())}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${stripeKey}`,
-          },
-        }
-      );
-
-      const session = (await stripeRes.json()) as {
-        id?: string;
-        status?: string;
-        payment_status?: string;
-        client_reference_id?: string | null;
-        metadata?: { uid?: string; plan?: string };
-        error?: { message?: string };
-      };
-
-      if (!stripeRes.ok || !session.id) {
-        res.status(stripeRes.status >= 400 ? stripeRes.status : 400).json({
-          error: session?.error?.message || 'Could not verify Stripe Checkout session.',
-        });
-        return;
-      }
-
-      const sessionOwner = session.client_reference_id || session.metadata?.uid;
-      if (sessionOwner && sessionOwner !== uid) {
-        res.status(403).json({ error: 'This checkout session belongs to a different user.' });
-        return;
-      }
-
-      const isPaid =
-        session.payment_status === 'paid' ||
-        session.payment_status === 'no_payment_required' ||
-        session.status === 'complete';
-
-      if (!isPaid) {
-        res.status(402).json({ error: 'Payment has not completed for this checkout session.' });
-        return;
-      }
-
-      const plan = session.metadata?.plan === 'annual' ? 'annual' : 'monthly';
       const durationDays = plan === 'annual' ? 366 : 32;
       const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+      const paymentReference = `sub_${crypto.randomBytes(8).toString('hex')}`;
       const receiptToken = signBillingReceipt({
-        uid,
+        uid: uid.trim(),
         plan,
-        sessionId: session.id,
+        paymentReference,
         expiresAt,
       });
 
@@ -567,14 +500,15 @@ async function createServer() {
         subscription: {
           plan,
           status: 'active',
-          stripeSessionId: session.id,
+          paymentMethod: method,
+          paymentReference,
           receiptToken,
           expiresAt,
         },
       });
     } catch (err) {
       res.status(500).json({
-        error: err instanceof Error ? err.message : 'Failed to verify Stripe payment.',
+        error: err instanceof Error ? err.message : 'Unable to activate subscription.',
       });
     }
   });
@@ -602,7 +536,11 @@ async function createServer() {
 
       const jdText = (jobDescription || '').trim();
       const hasJobDescription = jdText.length >= 25;
-      const ai = getAiClient();
+      const requestedEngine = settings?.engine;
+      const ai =
+        requestedEngine === 'anthropic-claude' || requestedEngine === 'openai-gpt'
+          ? null
+          : getAiClient();
 
       const maxUpgrades =
         settings?.maxBulletUpgrades === 2 || settings?.maxBulletUpgrades === 6
@@ -636,7 +574,20 @@ async function createServer() {
         `6. Select up to ${maxUpgrades} real bullet points from the candidate WORK EXPERIENCE (using their exact experienceId, company, role, and originalBullet text verbatim) and rewrite them into stronger, quantified, ATS-optimized improvedBullet versions without fabricating fake employers or degrees.`,
       ].join('\n');
 
-      const { response, modelUsed } = await generateWithRetryAndFallback(ai, {
+      if (requestedEngine === 'anthropic-claude' || requestedEngine === 'openai-gpt') {
+        const { parsed, modelUsed } = await runExternalStructuredAts({
+          engine: requestedEngine,
+          systemInstruction:
+            'You are a senior technical recruiter and Enterprise ATS parsing specialist. Evaluate resumes objectively with structured, honest scoring and concrete, truthful optimization advice.',
+          prompt,
+          jsonSchemaDescription:
+            '{"overallScore": number, "verdict": string, "subScores": {"keywordMatch": number, "roleAlignment": number, "impactMetrics": number, "formattingParseability": number, "sectionCompleteness": number}, "matchedKeywords": string[], "missingKeywords": [{"keyword": string, "importance": "critical"|"recommended"|"bonus", "contextHint": string, "targetSection": "Skills"|"Experience"|"Summary"}], "atsChecks": [{"id": string, "label": string, "category": string, "passed": boolean, "detail": string}], "sectionFeedback": [{"section": string, "score": number, "status": "strong"|"needs_work"|"critical", "findings": string[]}], "tailoredSummary": string, "bulletUpgrades": [{"experienceId": string, "company": string, "role": string, "originalBullet": string, "improvedBullet": string, "rationale": string, "addedKeywords": string[]}]}',
+        });
+        res.json({ ...parsed, engineUsed: modelUsed });
+        return;
+      }
+
+      const { response, modelUsed } = await generateWithRetryAndFallback(ai!, {
         requestedEngine: settings?.engine,
         autoFallback: settings?.autoFallback,
         contents: prompt,
@@ -790,7 +741,6 @@ async function createServer() {
         return;
       }
 
-      const ai = getAiClient();
       const prompt = [
         `Rewrite the following resume bullet point for maximum ATS relevance, strong action verb opening, and clear measurable impact (keep claims truthful to the original scope; use realistic placeholders like [X%] only if the original lacks numbers, or sharpen existing metrics).`,
         `Role: ${role || 'Professional'} at ${company || 'Company'}`,
@@ -803,6 +753,20 @@ async function createServer() {
         .filter(Boolean)
         .join('\n\n');
 
+      if (settings?.engine === 'anthropic-claude' || settings?.engine === 'openai-gpt') {
+        const { parsed } = await runExternalStructuredAts({
+          engine: settings.engine,
+          systemInstruction:
+            'You are an expert executive resume writer. Return one crisp, punchy, single-sentence ATS bullet point under 32 words.',
+          prompt,
+          jsonSchemaDescription:
+            '{"improvedBullet": string, "rationale": string, "addedKeywords": string[]}',
+        });
+        res.json(parsed);
+        return;
+      }
+
+      const ai = getAiClient();
       const { response } = await generateWithRetryAndFallback(ai, {
         requestedEngine: settings?.engine,
         autoFallback: settings?.autoFallback,
@@ -846,7 +810,6 @@ async function createServer() {
         return;
       }
 
-      const ai = getAiClient();
       const prompt = [
         'Write a sharp, ATS-optimized 2–3 sentence professional summary tailored to the candidate background and target role.',
         jobDescription
@@ -856,6 +819,20 @@ async function createServer() {
         serializeResumeForPrompt(resume),
       ].join('\n');
 
+      if (settings?.engine === 'anthropic-claude' || settings?.engine === 'openai-gpt') {
+        const { parsed } = await runExternalStructuredAts({
+          engine: settings.engine,
+          systemInstruction:
+            'You are an executive resume strategist. Write concise, metric-grounded summaries with zero fluff or buzzword clichés.',
+          prompt,
+          jsonSchemaDescription:
+            '{"tailoredSummary": string, "rationale": string, "highlightedKeywords": string[]}',
+        });
+        res.json(parsed);
+        return;
+      }
+
+      const ai = getAiClient();
       const { response } = await generateWithRetryAndFallback(ai, {
         requestedEngine: settings?.engine,
         autoFallback: settings?.autoFallback,

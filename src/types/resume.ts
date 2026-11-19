@@ -162,6 +162,8 @@ export interface SummaryGenerateResponse {
 export type AtsEngineMode =
   | 'gemini-4-hydrogen'
   | 'gemini-3.1-flash-lite'
+  | 'anthropic-claude'
+  | 'openai-gpt'
   | 'local-rules';
 
 export type AtsStrictness = 'balanced' | 'strict' | 'startup';
@@ -176,11 +178,14 @@ export interface AtsSettings {
 
 export type BillingPlanId = 'monthly' | 'annual';
 
+export type PaymentMethodType = 'upi' | 'card' | 'netbanking';
+
 export interface BillingSubscription {
   ownerId: string;
   plan: BillingPlanId;
   status: 'active';
-  stripeSessionId: string;
+  paymentMethod: PaymentMethodType;
+  paymentReference: string;
   receiptToken: string;
   expiresAt: string;
   createdAt?: string;

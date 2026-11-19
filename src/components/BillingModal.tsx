@@ -2,17 +2,24 @@ import React, { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import {
   AlertCircle,
+  Building2,
   Check,
   CheckCircle2,
   Clock,
   CreditCard,
   Loader2,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   X,
-  XCircle,
 } from 'lucide-react';
-import { BillingPlanId, BillingSubscription, TrialStatusInfo } from '../types/resume';
+import { saveBillingSubscriptionToFirestore } from '../services/firestoreSync';
+import {
+  BillingPlanId,
+  BillingSubscription,
+  PaymentMethodType,
+  TrialStatusInfo,
+} from '../types/resume';
 
 interface BillingModalProps {
   open: boolean;
@@ -20,8 +27,8 @@ interface BillingModalProps {
   trialStatus: TrialStatusInfo;
   subscription: BillingSubscription | null;
   reason?: string | null;
-  verifyingCheckout?: boolean;
   onSignInWithGmail: () => Promise<void>;
+  onSubscriptionActivated: (subscription: BillingSubscription) => void;
   onClose: () => void;
 }
 
@@ -50,11 +57,29 @@ const PLAN_OPTIONS: Array<{
   },
 ];
 
+const PAYMENT_METHODS: Array<{
+  id: PaymentMethodType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { id: 'upi', label: 'UPI', icon: Smartphone },
+  { id: 'card', label: 'Card', icon: CreditCard },
+  { id: 'netbanking', label: 'NetBanking', icon: Building2 },
+];
+
+const NETBANKING_BANKS = [
+  'HDFC Bank',
+  'ICICI Bank',
+  'State Bank of India',
+  'Axis Bank',
+  'Kotak Mahindra Bank',
+];
+
 const PRO_BENEFITS = [
-  'Unlimited Gemini 4 Hydrogen & 3.1 Flash Lite ATS compatibility scans',
+  'Unlimited Gemini ATS compatibility scans & keyword gap breakdowns',
   'One-click AI bullet point optimization & role-tailored summaries',
   'Unlimited ATS-parseable vector PDF & JSON resume exports',
-  'Encrypted multi-device Firestore cloud sync for drafts, jobs & reports',
+  'Multi-device cloud sync for drafts, job targets & reports',
 ];
 
 function formatDateLabel(iso: string | null): string {
@@ -70,21 +95,27 @@ function formatDateLabel(iso: string | null): string {
   });
 }
 
+function formatPaymentMethodLabel(method: PaymentMethodType | undefined): string {
+  if (method === 'card') return 'Card';
+  if (method === 'netbanking') return 'NetBanking';
+  return 'UPI';
+}
+
 export const BillingModal: React.FC<BillingModalProps> = ({
   open,
   user,
   trialStatus,
   subscription,
   reason,
-  verifyingCheckout = false,
   onSignInWithGmail,
+  onSubscriptionActivated,
   onClose,
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<BillingPlanId>('annual');
-  const [gatewayStatus, setGatewayStatus] = useState<{
-    loading: boolean;
-    stripeConfigured: boolean | null;
-  }>({ loading: false, stripeConfigured: null });
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('upi');
+  const [upiId, setUpiId] = useState('');
+  const [cardLabel, setCardLabel] = useState('');
+  const [bankName, setBankName] = useState(NETBANKING_BANKS[0]);
   const [submitting, setSubmitting] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -92,51 +123,62 @@ export const BillingModal: React.FC<BillingModalProps> = ({
   useEffect(() => {
     if (!open) return;
     setErrorMsg(null);
-    let active = true;
-    setGatewayStatus({ loading: true, stripeConfigured: null });
-    fetch('/api/billing/status')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!active) return;
-        setGatewayStatus({
-          loading: false,
-          stripeConfigured: Boolean(data?.stripeConfigured),
-        });
-      })
-      .catch(() => {
-        if (!active) return;
-        setGatewayStatus({ loading: false, stripeConfigured: null });
-      });
-    return () => {
-      active = false;
-    };
-  }, [open]);
+    if (subscription?.plan) {
+      setSelectedPlan(subscription.plan);
+    }
+    if (subscription?.paymentMethod) {
+      setPaymentMethod(subscription.paymentMethod);
+    }
+  }, [open, subscription]);
 
   if (!open) return null;
 
-  const handleCheckout = async () => {
+  const handleSubscribe = async () => {
     if (!user) return;
     setErrorMsg(null);
+
+    const detail =
+      paymentMethod === 'upi'
+        ? upiId.trim()
+        : paymentMethod === 'card'
+        ? cardLabel.trim()
+        : bankName.trim();
+
+    if (paymentMethod === 'upi' && !/^[^\s@]+@[^\s@]{2,}$/.test(detail)) {
+      setErrorMsg('Please enter a valid UPI ID (for example, name@okaxis).');
+      return;
+    }
+    if (paymentMethod === 'card' && detail.length < 4) {
+      setErrorMsg('Please enter the cardholder name or last 4 card digits.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const returnUrl = `${window.location.origin}${window.location.pathname}`;
-      const res = await fetch('/api/billing/create-checkout-session', {
+      const res = await fetch('/api/billing/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan: selectedPlan,
           uid: user.uid,
-          email: user.email || '',
-          returnUrl,
+          paymentMethod,
+          paymentDetail: detail,
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data?.url) {
-        throw new Error(data?.error || 'Could not start Stripe Checkout session.');
+      if (!res.ok || !data?.subscription) {
+        throw new Error(data?.error || 'Could not activate subscription.');
       }
-      window.location.assign(data.url);
+
+      await saveBillingSubscriptionToFirestore(user.uid, data.subscription);
+      onSubscriptionActivated({
+        ownerId: user.uid,
+        ...data.subscription,
+      });
+      onClose();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unable to start Stripe Checkout.');
+      setErrorMsg(err instanceof Error ? err.message : 'Unable to activate subscription.');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -170,7 +212,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                 ResumeIQ Trial &amp; Pro Plan
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                3-day full-access free trial for every Gmail account, then simple Pro billing via Stripe.
+                3-day full-access free trial for every Gmail account, then simple INR subscription billing.
               </p>
             </div>
           </div>
@@ -186,13 +228,6 @@ export const BillingModal: React.FC<BillingModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5 studio-scroll">
-          {verifyingCheckout && (
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl text-xs font-medium text-blue-800 dark:text-blue-200">
-              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-              <span>Verifying your Stripe Checkout payment and activating Pro access...</span>
-            </div>
-          )}
-
           {reason && (
             <div className="flex items-start gap-2.5 px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/70 rounded-xl text-xs text-amber-900 dark:text-amber-200">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-400" />
@@ -204,7 +239,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
           <div className="px-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
             {!user ? (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     3-Day Free Trial Ready
                   </p>
@@ -228,23 +263,24 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                   <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      ResumeIQ Pro Active ({subscription.plan === 'annual' ? 'Annual' : 'Monthly'})
+                      ResumeIQ Pro Active ({subscription.plan === 'annual' ? 'Annual' : 'Monthly'} ·{' '}
+                      {formatPaymentMethodLabel(subscription.paymentMethod)})
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                      Signed in as {user.email || user.displayName} · Access valid through{' '}
+                      Signed in as {user.email || user.displayName} · Valid through{' '}
                       <span className="font-mono">{formatDateLabel(subscription.expiresAt)}</span>
                     </p>
                   </div>
                 </div>
                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap shrink-0">
-                  Verified
+                  Active
                 </span>
               </div>
             ) : trialStatus.isTrialActive ? (
               <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-start gap-2.5">
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   <Clock className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0 mt-0.5" />
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                       3-Day Free Trial Active ·{' '}
                       {trialStatus.daysRemaining > 0
@@ -253,7 +289,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                       Trial ends on <span className="font-mono">{formatDateLabel(trialStatus.trialEndsAt)}</span>.
-                      Upgrade anytime to continue uninterrupted AI scans &amp; PDF exports.
+                      Subscribe anytime to keep uninterrupted AI scans &amp; PDF exports.
                     </p>
                   </div>
                 </div>
@@ -261,7 +297,7 @@ export const BillingModal: React.FC<BillingModalProps> = ({
             ) : (
               <div className="flex items-start gap-2.5">
                 <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     Your 3-Day Free Trial Has Ended
                   </p>
@@ -319,6 +355,107 @@ export const BillingModal: React.FC<BillingModalProps> = ({
             </div>
           </div>
 
+          {/* Standard Payment Method Selection */}
+          {user && (
+            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Payment Method
+                </h3>
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                  <span>Instant account activation</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {PAYMENT_METHODS.map((pm) => {
+                  const Icon = pm.icon;
+                  const active = paymentMethod === pm.id;
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod(pm.id);
+                        setErrorMsg(null);
+                      }}
+                      className={`inline-flex items-center justify-center gap-1.5 min-h-[38px] px-3 py-2 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap cursor-pointer ${
+                        active
+                          ? 'border-blue-700 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span>{pm.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {paymentMethod === 'upi' && (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="billing-upi-input"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-400"
+                  >
+                    UPI ID (GPay, PhonePe, Paytm, BHIM)
+                  </label>
+                  <input
+                    id="billing-upi-input"
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    placeholder="yourname@okaxis"
+                    className="w-full h-[38px] px-3 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+              )}
+
+              {paymentMethod === 'card' && (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="billing-card-input"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-400"
+                  >
+                    Cardholder Name or Card Reference
+                  </label>
+                  <input
+                    id="billing-card-input"
+                    type="text"
+                    value={cardLabel}
+                    onChange={(e) => setCardLabel(e.target.value)}
+                    placeholder="Name on card (e.g. Nilesh Chikhle)"
+                    className="w-full h-[38px] px-3 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+              )}
+
+              {paymentMethod === 'netbanking' && (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="billing-bank-select"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-400"
+                  >
+                    Select Bank
+                  </label>
+                  <select
+                    id="billing-bank-select"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="w-full h-[38px] px-3 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                  >
+                    {NETBANKING_BANKS.map((bank) => (
+                      <option key={bank} value={bank}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Included Features */}
           <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -338,38 +475,6 @@ export const BillingModal: React.FC<BillingModalProps> = ({
             </ul>
           </div>
 
-          {/* Stripe Payment Gateway Status */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
-            <div className="flex items-start sm:items-center gap-2.5 min-w-0">
-              <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5 sm:mt-0" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                  Stripe Payment Gateway
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {gatewayStatus.stripeConfigured === false
-                    ? 'Add STRIPE_SECRET_KEY in Settings > Secrets to enable live Card, UPI, Apple Pay & Google Pay checkouts.'
-                    : 'Encrypted hosted checkout supporting Credit/Debit Cards, UPI, Apple Pay & Google Pay.'}
-                </p>
-              </div>
-            </div>
-            <div className="shrink-0 text-xs font-medium inline-flex items-center gap-1.5 whitespace-nowrap">
-              {gatewayStatus.loading ? (
-                <span className="text-slate-500 dark:text-slate-400">Checking...</span>
-              ) : gatewayStatus.stripeConfigured ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                  <span className="text-emerald-700 dark:text-emerald-400">Connected</span>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                  <span className="text-amber-700 dark:text-amber-400">Setup Required</span>
-                </>
-              )}
-            </div>
-          </div>
-
           {errorMsg && (
             <div className="px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl text-xs text-red-700 dark:text-red-300">
               {errorMsg}
@@ -387,25 +492,29 @@ export const BillingModal: React.FC<BillingModalProps> = ({
             Close
           </button>
 
-          {user && !trialStatus.hasPaidSubscription && (
+          {user && (
             <button
               type="button"
-              onClick={handleCheckout}
-              disabled={submitting || gatewayStatus.stripeConfigured === false}
+              onClick={handleSubscribe}
+              disabled={submitting}
               className="inline-flex items-center justify-center gap-2 min-h-[40px] px-5 py-2 text-xs font-semibold text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-400 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                  <span>Redirecting to Stripe...</span>
+                  <span>Activating Plan...</span>
                 </>
               ) : (
                 <>
-                  <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   <span>
-                    {selectedPlan === 'annual'
-                      ? 'Subscribe with Stripe · ₹1,199/yr'
-                      : 'Subscribe with Stripe · ₹149/mo'}
+                    {trialStatus.hasPaidSubscription
+                      ? selectedPlan === 'annual'
+                        ? 'Switch / Renew Annual · ₹1,199/yr'
+                        : 'Switch / Renew Monthly · ₹149/mo'
+                      : selectedPlan === 'annual'
+                      ? 'Subscribe Now · ₹1,199/yr'
+                      : 'Subscribe Now · ₹149/mo'}
                   </span>
                 </>
               )}

@@ -20,7 +20,6 @@ import {
   deleteDraftFromFirestore,
   deleteJobFromFirestore,
   ensureUserProfile,
-  saveBillingSubscriptionToFirestore,
   seedInitialWorkspaceIfEmpty,
   subscribeUserWorkspace,
   syncAtsSettingsToFirestore,
@@ -98,8 +97,6 @@ export default function App() {
     open: false,
     reason: null,
   });
-  const [pendingCheckoutSessionId, setPendingCheckoutSessionId] = useState<string | null>(null);
-  const [verifyingCheckout, setVerifyingCheckout] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<{
     open: boolean;
     reason: string;
@@ -201,67 +198,6 @@ export default function App() {
     const interval = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(interval);
   }, []);
-
-  // Capture Stripe Checkout return params (?checkout=success&session_id=... or ?checkout=cancelled)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const checkoutState = params.get('checkout');
-    const sessionId = params.get('session_id');
-    if (checkoutState === 'success' && sessionId) {
-      setPendingCheckoutSessionId(sessionId);
-      setBillingModal({ open: true, reason: null });
-      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
-    } else if (checkoutState === 'cancelled') {
-      setToastMessage('Stripe checkout was cancelled. You can subscribe anytime.');
-      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
-    }
-  }, []);
-
-  // Verify completed Stripe Checkout session once authenticated user is available
-  useEffect(() => {
-    if (!currentUser || !pendingCheckoutSessionId) return;
-    let active = true;
-    setVerifyingCheckout(true);
-    (async () => {
-      try {
-        const res = await fetch('/api/billing/verify-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: pendingCheckoutSessionId,
-            uid: currentUser.uid,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data?.subscription) {
-          throw new Error(data?.error || 'Could not verify Stripe payment.');
-        }
-        await saveBillingSubscriptionToFirestore(currentUser.uid, data.subscription);
-        if (!active) return;
-        setBillingSubscription({
-          ownerId: currentUser.uid,
-          ...data.subscription,
-        });
-        setPendingCheckoutSessionId(null);
-        setBillingModal({ open: false, reason: null });
-        setToastMessage('ResumeIQ Pro subscription activated!');
-      } catch (err) {
-        if (!active) return;
-        setPendingCheckoutSessionId(null);
-        setBillingModal({
-          open: true,
-          reason: err instanceof Error ? err.message : 'Unable to verify Stripe payment.',
-        });
-      } finally {
-        if (active) {
-          setVerifyingCheckout(false);
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [currentUser, pendingCheckoutSessionId]);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -1163,20 +1099,30 @@ export default function App() {
       <SettingsModal
         open={settingsModalOpen}
         settings={atsSettings}
+        isAuthenticated={Boolean(currentUser)}
+        userEmail={currentUser?.email}
         onUpdateSettings={handleUpdateAtsSettings}
+        onRequireAuth={(reason) => {
+          setSettingsModalOpen(false);
+          setAuthPrompt({ open: true, reason });
+        }}
         onClose={() => setSettingsModalOpen(false)}
         onNotify={notify}
       />
 
-      {/* 3-Day Free Trial & Stripe Billing Modal */}
+      {/* 3-Day Free Trial & Direct Pro Billing Modal */}
       <BillingModal
         open={billingModal.open}
         user={currentUser}
         trialStatus={trialStatus}
         subscription={billingSubscription}
         reason={billingModal.reason}
-        verifyingCheckout={verifyingCheckout}
         onSignInWithGmail={handleSignInWithGmail}
+        onSubscriptionActivated={(sub) => {
+          setBillingSubscription(sub);
+          setBillingModal({ open: false, reason: null });
+          notify('ResumeIQ Pro subscription activated!');
+        }}
         onClose={() => setBillingModal({ open: false, reason: null })}
       />
 

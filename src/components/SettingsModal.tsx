@@ -3,8 +3,10 @@ import {
   CheckCircle2,
   Cpu,
   Download,
+  Link2,
   RotateCcw,
   ShieldCheck,
+  Unplug,
   Upload,
   X,
   XCircle,
@@ -19,13 +21,23 @@ import {
 interface SettingsModalProps {
   open: boolean;
   settings: AtsSettings;
+  isAuthenticated: boolean;
+  userEmail?: string | null;
   onUpdateSettings: (next: AtsSettings) => void;
+  onRequireAuth: (reason: string) => void;
   onClose: () => void;
   onNotify: (message: string) => void;
 }
 
-const ENGINES: Array<{
-  id: AtsEngineMode;
+interface ProviderStatus {
+  loading: boolean;
+  gemini: boolean;
+  claude: boolean;
+  openai: boolean;
+}
+
+const GEMINI_VARIANTS: Array<{
+  id: 'gemini-4-hydrogen' | 'gemini-3.1-flash-lite';
   name: string;
   subtitle: string;
   description: string;
@@ -33,55 +45,60 @@ const ENGINES: Array<{
   {
     id: 'gemini-4-hydrogen',
     name: 'Gemini 4 Hydrogen',
-    subtitle: 'Server-Side AI · Deep Semantic ATS',
+    subtitle: 'Primary · Deep Semantic ATS',
     description:
       'High-accuracy job matching, keyword gap context, tailored summaries, and bullet rewrites.',
   },
   {
     id: 'gemini-3.1-flash-lite',
     name: 'Gemini 3.1 Flash Lite',
-    subtitle: 'Server-Side AI · High Availability',
+    subtitle: 'Fast · High Availability',
     description:
       'Low-latency scanning optimized for peak demand periods while keeping structured AI feedback.',
-  },
-  {
-    id: 'local-rules',
-    name: 'Local Deterministic Engine',
-    subtitle: 'In-Browser · Instant Offline Check',
-    description:
-      'Zero-latency keyword extraction, impact metric density, and parseability rules without network calls.',
   },
 ];
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   open,
   settings,
+  isAuthenticated,
+  userEmail,
   onUpdateSettings,
+  onRequireAuth,
   onClose,
   onNotify,
 }) => {
-  const [serverStatus, setServerStatus] = useState<{
-    loading: boolean;
-    geminiConfigured: boolean | null;
-  }>({ loading: false, geminiConfigured: null });
+  const [providerStatus, setProviderStatus] = useState<ProviderStatus>({
+    loading: false,
+    gemini: false,
+    claude: false,
+    openai: false,
+  });
   const configFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
     let active = true;
-    setServerStatus({ loading: true, geminiConfigured: null });
+    setProviderStatus((prev) => ({ ...prev, loading: true }));
     fetch('/api/ats/status')
       .then((res) => res.json())
       .then((data) => {
         if (!active) return;
-        setServerStatus({
+        setProviderStatus({
           loading: false,
-          geminiConfigured: Boolean(data?.geminiConfigured),
+          gemini: Boolean(data?.providers?.gemini ?? data?.geminiConfigured),
+          claude: Boolean(data?.providers?.claude),
+          openai: Boolean(data?.providers?.openai),
         });
       })
       .catch(() => {
         if (!active) return;
-        setServerStatus({ loading: false, geminiConfigured: null });
+        setProviderStatus({
+          loading: false,
+          gemini: false,
+          claude: false,
+          openai: false,
+        });
       });
     return () => {
       active = false;
@@ -89,6 +106,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [open]);
 
   if (!open) return null;
+
+  const isGeminiActive =
+    settings.engine === 'gemini-4-hydrogen' || settings.engine === 'gemini-3.1-flash-lite';
+  const isClaudeActive = settings.engine === 'anthropic-claude';
+  const isOpenAiActive = settings.engine === 'openai-gpt';
+  const isLocalActive = settings.engine === 'local-rules';
+
+  const handleConnectProvider = (targetEngine: AtsEngineMode, label: string) => {
+    if (!isAuthenticated) {
+      onRequireAuth(`Sign in with your Google account to connect ${label} for ATS checks.`);
+      return;
+    }
+    onUpdateSettings({ ...settings, engine: targetEngine });
+    onNotify(`Connected ${label} for ATS checks.`);
+  };
+
+  const handleDisconnectProvider = (label: string) => {
+    onUpdateSettings({ ...settings, engine: 'local-rules' });
+    onNotify(`Disconnected ${label}. Switched to Local Deterministic Engine.`);
+  };
 
   const handleImportConfig = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,10 +163,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Cpu className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
             <div className="min-w-0">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                ATS Check Configuration
+                ATS Check &amp; AI Provider Configuration
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Select analysis engine, failover behavior, and scoring strictness.
+                Connect or disconnect your preferred AI engine and tune ATS scoring behavior.
               </p>
             </div>
           </div>
@@ -145,67 +182,273 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6 studio-scroll">
-          {/* Server Connection Status */}
+          {/* Authentication & Security Notice */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
             <div className="flex items-start sm:items-center gap-2.5 min-w-0">
               <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5 sm:mt-0" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                  Server-Side Gemini Connection
+                  {isAuthenticated
+                    ? `Signed in as ${userEmail || 'Google Account'}`
+                    : 'Google Session Required for Cloud AI'}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Credentials are managed securely in the platform Secrets environment.
+                  Provider credentials are stored safely in server Secrets (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)—never exposed in the browser.
                 </p>
               </div>
             </div>
             <div className="shrink-0 text-xs font-medium inline-flex items-center gap-1.5 whitespace-nowrap">
-              {serverStatus.loading ? (
-                <span className="text-slate-500 dark:text-slate-400">Checking...</span>
-              ) : serverStatus.geminiConfigured ? (
+              {isAuthenticated ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                  <span className="text-emerald-700 dark:text-emerald-400">Connected</span>
+                  <span className="text-emerald-700 dark:text-emerald-400">Authenticated</span>
                 </>
               ) : (
-                <>
-                  <XCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                  <span className="text-amber-700 dark:text-amber-400">Not Configured</span>
-                </>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onRequireAuth('Sign in with Google to connect cloud AI engines for ATS scans.')
+                  }
+                  className="inline-flex items-center justify-center min-h-[32px] px-3 py-1 text-xs font-semibold text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded-lg whitespace-nowrap cursor-pointer"
+                >
+                  Sign In
+                </button>
               )}
             </div>
           </div>
 
-          {/* Engine Selector */}
+          {/* AI Providers: Connect / Disconnect */}
           <div className="space-y-2.5">
             <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              ATS Analysis Engine
+              AI Tools &amp; Connections
             </h3>
-            <div className="space-y-2">
-              {ENGINES.map((eng) => {
-                const selected = settings.engine === eng.id;
-                return (
-                  <button
-                    key={eng.id}
-                    type="button"
-                    onClick={() => onUpdateSettings({ ...settings, engine: eng.id })}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-colors cursor-pointer space-y-1 ${
-                      selected
-                        ? 'border-blue-700 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-x-3 gap-y-0.5 flex-wrap">
+            <div className="space-y-2.5">
+              {/* Google Gemini */}
+              <div
+                className={`p-3.5 rounded-xl border space-y-3 transition-colors ${
+                  isGeminiActive
+                    ? 'border-blue-700 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {eng.name}
+                        Google Gemini
                       </span>
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {eng.subtitle}
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        {providerStatus.loading
+                          ? 'Checking server...'
+                          : providerStatus.gemini
+                          ? 'Server key ready'
+                          : 'Set GEMINI_API_KEY in Secrets'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300">{eng.description}</p>
-                  </button>
-                );
-              })}
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      Deep semantic ATS matching, tailored summaries, bullet rewrites, and market salary grounding.
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-2">
+                    {isGeminiActive && isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectProvider('Google Gemini')}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/70 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        <Unplug className="w-3.5 h-3.5 shrink-0" />
+                        <span>Disconnect</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!providerStatus.loading && !providerStatus.gemini}
+                        onClick={() => handleConnectProvider('gemini-4-hydrogen', 'Google Gemini')}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-500 rounded-lg whitespace-nowrap shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <Link2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Connect</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Gemini Model Sub-selector when connected */}
+                {isGeminiActive && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200/70 dark:border-slate-800">
+                    {GEMINI_VARIANTS.map((variant) => {
+                      const active = settings.engine === variant.id;
+                      return (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => onUpdateSettings({ ...settings, engine: variant.id })}
+                          className={`text-left p-2.5 rounded-lg border transition-colors cursor-pointer space-y-0.5 ${
+                            active
+                              ? 'border-blue-600 dark:border-blue-400 bg-white dark:bg-slate-900'
+                              : 'border-slate-200 dark:border-slate-800 hover:bg-white/70 dark:hover:bg-slate-900/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                              {variant.name}
+                            </span>
+                            {active && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400 shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {variant.subtitle}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Anthropic Claude */}
+              <div
+                className={`p-3.5 rounded-xl border transition-colors ${
+                  isClaudeActive
+                    ? 'border-blue-700 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        Anthropic Claude
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        {providerStatus.claude ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                            <span className="text-emerald-700 dark:text-emerald-400">Server key ready</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" />
+                            <span>Set ANTHROPIC_API_KEY in Secrets</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      Nuanced executive summary rewriting and strict ATS evaluation via Claude 3.5 Sonnet.
+                    </p>
+                  </div>
+
+                  <div className="shrink-0">
+                    {isClaudeActive && isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectProvider('Anthropic Claude')}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/70 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        <Unplug className="w-3.5 h-3.5 shrink-0" />
+                        <span>Disconnect</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!providerStatus.loading && !providerStatus.claude}
+                        onClick={() => handleConnectProvider('anthropic-claude', 'Anthropic Claude')}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-500 rounded-lg whitespace-nowrap shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <Link2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Connect</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* OpenAI GPT */}
+              <div
+                className={`p-3.5 rounded-xl border transition-colors ${
+                  isOpenAiActive
+                    ? 'border-blue-700 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        OpenAI GPT
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        {providerStatus.openai ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                            <span className="text-emerald-700 dark:text-emerald-400">Server key ready</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" />
+                            <span>Set OPENAI_API_KEY in Secrets</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      Structured keyword extraction and bullet optimization powered by GPT-4o mini.
+                    </p>
+                  </div>
+
+                  <div className="shrink-0">
+                    {isOpenAiActive && isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectProvider('OpenAI GPT')}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/70 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        <Unplug className="w-3.5 h-3.5 shrink-0" />
+                        <span>Disconnect</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!providerStatus.loading && !providerStatus.openai}
+                        onClick={() => handleConnectProvider('openai-gpt', 'OpenAI GPT')}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-500 rounded-lg whitespace-nowrap shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <Link2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Connect</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Local Deterministic Engine */}
+              <button
+                type="button"
+                onClick={() => {
+                  onUpdateSettings({ ...settings, engine: 'local-rules' });
+                  onNotify('Switched to Local Deterministic Engine.');
+                }}
+                className={`w-full text-left p-3.5 rounded-xl border transition-colors cursor-pointer space-y-1 ${
+                  isLocalActive
+                    ? 'border-blue-700 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
+                    : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-x-3 gap-y-0.5 flex-wrap">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Local Deterministic Engine
+                  </span>
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    In-Browser · No API Key Needed
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Zero-latency keyword extraction, impact metric density, and parseability rules completely offline.
+                </p>
+              </button>
             </div>
           </div>
 

@@ -272,7 +272,13 @@
         },
         "engine": {
           "type": "string",
-          "enum": ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "local-rules"]
+          "enum": [
+            "gemini-4-hydrogen",
+            "gemini-3.1-flash-lite",
+            "anthropic-claude",
+            "openai-gpt",
+            "local-rules"
+          ]
         },
         "autoFallback": {
           "type": "boolean"
@@ -309,7 +315,7 @@
     },
     "BillingSubscriptionDoc": {
       "title": "Billing Subscription",
-      "description": "Verified Stripe subscription entitlement for a user account.",
+      "description": "Active Pro subscription entitlement for a user account.",
       "type": "object",
       "properties": {
         "ownerId": {
@@ -326,7 +332,11 @@
           "type": "string",
           "enum": ["active"]
         },
-        "stripeSessionId": {
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["upi", "card", "netbanking"]
+        },
+        "paymentReference": {
           "type": "string",
           "minLength": 1,
           "maxLength": 255
@@ -353,7 +363,8 @@
         "ownerId",
         "plan",
         "status",
-        "stripeSessionId",
+        "paymentMethod",
+        "paymentReference",
         "receiptToken",
         "expiresAt",
         "createdAt",

@@ -260,6 +260,8 @@ function sanitizeEngine(val: unknown): AtsEngineMode {
   if (
     val === 'gemini-4-hydrogen' ||
     val === 'gemini-3.1-flash-lite' ||
+    val === 'anthropic-claude' ||
+    val === 'openai-gpt' ||
     val === 'local-rules'
   ) {
     return val;

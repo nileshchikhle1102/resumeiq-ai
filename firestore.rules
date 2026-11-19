@@ -174,7 +174,13 @@ service cloud.firestore {
         && isValidId(data.ownerId)
         && data.ownerId == userId
         && data.ownerId == request.auth.uid
-        && data.engine in ['gemini-4-hydrogen', 'gemini-3.1-flash-lite', 'local-rules']
+        && data.engine in [
+          'gemini-4-hydrogen',
+          'gemini-3.1-flash-lite',
+          'anthropic-claude',
+          'openai-gpt',
+          'local-rules'
+        ]
         && data.autoFallback is bool
         && data.strictness in ['balanced', 'strict', 'startup']
         && data.maxBulletUpgrades in [2, 4, 6]
@@ -186,11 +192,11 @@ service cloud.firestore {
     // Validation Blueprint: BillingSubscriptionDoc
     function isValidBillingSubscription(data, userId) {
       return data.keys().hasAll([
-          'ownerId', 'plan', 'status', 'stripeSessionId',
+          'ownerId', 'plan', 'status', 'paymentMethod', 'paymentReference',
           'receiptToken', 'expiresAt', 'createdAt', 'updatedAt'
         ])
         && data.keys().hasOnly([
-          'ownerId', 'plan', 'status', 'stripeSessionId',
+          'ownerId', 'plan', 'status', 'paymentMethod', 'paymentReference',
           'receiptToken', 'expiresAt', 'createdAt', 'updatedAt'
         ])
         && isValidId(data.ownerId)
@@ -198,7 +204,8 @@ service cloud.firestore {
         && data.ownerId == request.auth.uid
         && data.plan in ['monthly', 'annual']
         && data.status == 'active'
-        && data.stripeSessionId is string && data.stripeSessionId.size() >= 1 && data.stripeSessionId.size() <= 255
+        && data.paymentMethod in ['upi', 'card', 'netbanking']
+        && data.paymentReference is string && data.paymentReference.size() >= 1 && data.paymentReference.size() <= 255
         && data.receiptToken is string && data.receiptToken.size() >= 16 && data.receiptToken.size() <= 256
         && data.expiresAt is string && data.expiresAt.size() >= 10 && data.expiresAt.size() <= 64
         && data.createdAt is timestamp
@@ -348,7 +355,7 @@ service cloud.firestore {
           && incoming().createdAt == existing().createdAt
           && incoming().updatedAt == request.time
           && incoming().diff(existing()).affectedKeys().hasOnly([
-            'plan', 'status', 'stripeSessionId', 'receiptToken', 'expiresAt', 'updatedAt'
+            'plan', 'status', 'paymentMethod', 'paymentReference', 'receiptToken', 'expiresAt', 'updatedAt'
           ])
           && parentUserExists(userId);
         allow delete: if false;

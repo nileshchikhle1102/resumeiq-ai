@@ -20,6 +20,7 @@ import {
   BillingPlanId,
   BillingSubscription,
   JobTarget,
+  PaymentMethodType,
   ResumeDraft,
   SkillProficiency,
 } from '../types/resume';
@@ -428,7 +429,8 @@ export async function saveBillingSubscriptionToFirestore(
   uid: string,
   subscription: {
     plan: BillingPlanId;
-    stripeSessionId: string;
+    paymentMethod: PaymentMethodType;
+    paymentReference: string;
     receiptToken: string;
     expiresAt: string;
   }
@@ -436,7 +438,11 @@ export async function saveBillingSubscriptionToFirestore(
   const path = `users/${uid}/billing/subscription`;
   const ref = doc(db, 'users', uid, 'billing', 'subscription');
   const plan: BillingPlanId = subscription.plan === 'annual' ? 'annual' : 'monthly';
-  const stripeSessionId = truncate(subscription.stripeSessionId, 255);
+  const paymentMethod: PaymentMethodType =
+    subscription.paymentMethod === 'card' || subscription.paymentMethod === 'netbanking'
+      ? subscription.paymentMethod
+      : 'upi';
+  const paymentReference = truncate(subscription.paymentReference, 255);
   const receiptToken = truncate(subscription.receiptToken, 256);
   const expiresAt = truncate(subscription.expiresAt, 64);
 
@@ -447,7 +453,8 @@ export async function saveBillingSubscriptionToFirestore(
         ownerId: uid,
         plan,
         status: 'active',
-        stripeSessionId,
+        paymentMethod,
+        paymentReference,
         receiptToken,
         expiresAt,
         createdAt: serverTimestamp(),
@@ -457,7 +464,8 @@ export async function saveBillingSubscriptionToFirestore(
       await updateDoc(ref, {
         plan,
         status: 'active',
-        stripeSessionId,
+        paymentMethod,
+        paymentReference,
         receiptToken,
         expiresAt,
         updatedAt: serverTimestamp(),
@@ -516,7 +524,11 @@ export function subscribeUserWorkspace(
         ownerId: String(data.ownerId || uid),
         plan: data.plan === 'annual' ? 'annual' : 'monthly',
         status: 'active',
-        stripeSessionId: String(data.stripeSessionId || ''),
+        paymentMethod:
+          data.paymentMethod === 'card' || data.paymentMethod === 'netbanking'
+            ? data.paymentMethod
+            : 'upi',
+        paymentReference: String(data.paymentReference || data.stripeSessionId || ''),
         receiptToken: String(data.receiptToken || ''),
         expiresAt: String(data.expiresAt || ''),
       });
